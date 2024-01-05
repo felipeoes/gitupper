@@ -1,0 +1,97 @@
+html {
+  font-family: "InterRegular";
+  
+}
+
+/* width */
+::-webkit-scrollbar {
+  width: 0.6em;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  box-shadow: inset 0 0 6px rgba(0, 0, 0, 0);
+  border-radius: 10px;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+  background-color: rgba(0, 0, 0, 0.2);
+  outline: "1px solid slategrey";
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+body {
+  margin: 0;
+  font-family: "InterRegular";
+  background-color: #F3F3F3;
+}
+
+body > #root > div {
+  height: 100vh;
+}
+
+@media screen and (max-height: 768px) {
+  .MuiCalendarPicker-root {
+    height: 320px;
+  }
+}
+
+@font-face {
+  font-family: "InterRegular";
+  src: local("InterRegular"),
+    url("./assets/fonts/Inter-Regular.ttf") format("truetype");
+  font-weight: normal;
+}
+
+@font-face {
+  font-family: "InterBold";
+  src: local("InterBold"),
+    url("./assets/fonts/Inter-Bold.ttf") format("truetype");
+  font-weight: bold;
+}
+
+@font-face {
+  font-family: "InterSemiBold";
+  src: local("InterSemiBold"),
+    url("./assets/fonts/Inter-SemiBold.ttf") format("truetype");
+  font-weight: normal;
+}
+
+@font-face {
+  font-family: "InterLight";
+  src: local("InterLight"),
+    url("./assets/fonts/Inter-Light.ttf") format("truetype");
+  font-weight: lighter;
+}
+
+@font-face {
+  font-family: "InterMedium";
+  src: local("InterMedium"),
+    url("./assets/fonts/Inter-Medium.ttf") format("truetype");
+}
+@font-face {
+  font-family: "InterExtraBold";
+  src: local("InterExtraBold"),
+    url("./assets/fonts/Inter-ExtraBold.ttf") format("truetype");
+  font-weight: bold;
+}
+
+@font-face {
+  font-family: "InterBlack";
+  src: local("InterBlack"),
+    url("./assets/fonts/Inter-Black.ttf") format("truetype");
+  font-weight: normal;
+}
+
+@font-face {
+  font-family: "InterThin";
+  src: local("InterThin"),
+    url("./assets/fonts/Inter-Thin.ttf") format("truetype");
+  font-weight: normal;
+}
