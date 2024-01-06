@@ -1,6 +1,6 @@
-from platforms.user import BeecrowdUser
-from .auth import BeecrowdAuthenticator
-from .submissions import BeecrowdSubmissionsFetcher
+from platforms.utils.commons import error_msg
+from .auth import BeeAuthenticator
+from .submissions import BeeSubmissionsFetcher
 from .updater import initialize_bg_fetcher
 from gitupper.models import User
 
@@ -17,24 +17,30 @@ def get_bee_submissions(user: User,  gitupper_id: int = None):
     options = get_options()
     access_token = user.beeuser.access_token
 
-    authenticator = BeecrowdAuthenticator(
+    authenticator = BeeAuthenticator(
         None, None, access_token, gitupper_id)
 
     bee_user = authenticator.authenticate_session()
-    bee_fetcher = BeecrowdSubmissionsFetcher(bee_user, options, gitupper_id)
+
+    if not bee_user:
+        # Token is invalid
+        return error_msg("Token inválido")
+
+    bee_fetcher = BeeSubmissionsFetcher(bee_user, gitupper_id, options)
     try:
         submissions = bee_fetcher.get_submissions()
-        user.bee_submissions = submissions
-        return user
-    except Exception as e:
-        print(e)
-        return None
 
+        if isinstance(submissions, dict):
+            error = submissions.get("error")
+            if error:
+                return error_msg(error)
 
-def update_bee_submissions(user: BeecrowdUser, gitupper_id: int = None):
-    try:
-        user = get_bee_submissions(user, gitupper_id)
-        return user
+            already_updated = submissions.get("already_updated")
+
+            if already_updated:
+                return {"already_updated": already_updated}
+
+        return submissions
     except Exception as e:
         print(e)
         return None
@@ -42,7 +48,7 @@ def update_bee_submissions(user: BeecrowdUser, gitupper_id: int = None):
 
 def retrieve_bee_user(email: str = None, password: str = None, session_id: str = None, gitupper_id: int = None):
     try:
-        authenticator = BeecrowdAuthenticator(
+        authenticator = BeeAuthenticator(
             email, password, session_id, gitupper_id)
         if email and password:
             user = authenticator.authenticate()

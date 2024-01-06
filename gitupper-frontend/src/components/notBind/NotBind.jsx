@@ -10,9 +10,12 @@ import {
 } from "./styles";
 import { useTheme } from "styled-components";
 import Button from "../button/Button";
+import { StyledLink } from "../../views/non-auth/login/styles";
+import { capitalize } from "../../services/utils/functions";
 
 export default function NotBind({ platform }) {
-  const { user } = useContext(AuthContext);
+  const { state, dispatch } = useContext(AuthContext);
+  const { user } = state;
   const theme = useTheme();
 
   return (
@@ -29,15 +32,16 @@ export default function NotBind({ platform }) {
         </ContainerText>
 
         <ContainerButton>
-          <Button
-            type="button"
-            bgColor={theme.colors.primary}
-            width={256}
-            onClick={() => {}}
-            marginTop={40}
-          >
-            Vincular {platform.name}
-          </Button>
+          <StyledLink to="/settings" marginTop={36}>
+            <Button
+              type="button"
+              bgColor={theme.colors.primary}
+              width={256}
+              onClick={() => {}}
+            >
+              Vincular {capitalize(platform.name)}
+            </Button>
+          </StyledLink>
         </ContainerButton>
       </ContainerContent>
     </Container>

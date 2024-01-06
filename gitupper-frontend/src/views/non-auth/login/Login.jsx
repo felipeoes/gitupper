@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect, useContext } from "react";
 import { useTheme } from "styled-components";
 import {
@@ -17,8 +18,7 @@ import {
   GithubOauthLink,
 } from "./styles";
 
-import { FRONT_BASEURL } from "../../../services/api.js";
-import AuthContext from "../../../contexts/auth";
+import { AuthContext, WorkersContext } from "../../../contexts/";
 import { GoMarkGithub } from "react-icons/go";
 import Button from "./../../../components/button/Button";
 import Checkbox from "../../../components/checkbox/Checkbox";
@@ -43,17 +43,11 @@ export function passwordRequirements(password) {
 }
 
 function userIsBinded(user) {
-  // Itera pelos atributos do usuário
-  const excluded_keys = ["gitupper_id", "github_id"];
-  for (let key in user) {
-    // Se algum atributo terminado com _id for diferente de null, então o usuário está bindado
-    if (
-      !excluded_keys.includes(key) &&
-      key.endsWith("_id") &&
-      user[key] !== null
-    ) {
-      return true;
-    }
+  // Get platforms_users attribute
+  const platforms_users = user?.platforms_users;
+
+  if (platforms_users && Object.keys(platforms_users).length > 0) {
+    return true;
   }
 
   return false;
@@ -62,18 +56,21 @@ function userIsBinded(user) {
 export function checkLoginState(state) {
   if (state.isLoggedIn) {
     if (userIsBinded(state.user)) {
-      window.location.replace(`${FRONT_BASEURL}${paths.homepage}`);
+      // uses javascript to click styledLink to avoid page reload
+      document.getElementById("styled-link-homepage").click();
     } else {
-      window.location.replace(`${FRONT_BASEURL}${paths.bind}`);
+      document.getElementById("styled-link-bind").click();
     }
   }
 }
 
 export default function Login() {
-  const context = useContext(AuthContext);
+  const authContext = useContext(AuthContext);
+  const workersContext = useContext(WorkersContext);
   const theme = useTheme();
-  const { client_id, redirect_uri } = context.state;
-  const { state, dispatch } = context;
+  const { client_id, redirect_uri } = authContext.state;
+  const { state, dispatch } = authContext;
+  const { dispatchWorker } = workersContext;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -82,20 +79,42 @@ export default function Login() {
   const [disabledForm, setDisabledForm] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  function fetchSubmissionsAndLogin(response) {
+    let platforms = {};
+
+    Object.keys(response.user.platforms_users).forEach((platformPrefix) => {
+      platforms[platformPrefix] =
+        response.user.platforms_users[platformPrefix][`${platformPrefix}_id`];
+    });
+    const dispatchWorkerData = {
+      type: "FETCH_SUBMISSIONS",
+      payload: {
+        platforms: platforms,
+        authToken: response.tokens.access,
+      },
+    };
+
+    dispatch({
+      type: "LOGIN",
+      payload: {
+        user: response.user,
+        isLoggedIn: true,
+        github_token:
+          response?.github_token ||
+          response.user?.github_user?.github_access_token,
+        tokens: response.tokens,
+        dispatchWorker: dispatchWorker,
+        dispatchWorkerData: dispatchWorkerData,
+      },
+    });
+  }
+
   useEffect(() => {
     async function handleOnLoginGithub(code) {
-      const response = await context.LoginGithub(code);
+      const response = await authContext.LoginGithub(code);
 
       try {
-        dispatch({
-          type: "LOGIN",
-          payload: {
-            user: response.data,
-            isLoggedIn: true,
-            github_token: response.token,
-            tokens: response.tokens,
-          },
-        });
+        fetchSubmissionsAndLogin(response);
       } catch (error) {
         resetFormOnError(error);
       }
@@ -108,12 +127,13 @@ export default function Login() {
       const newUrl = url.split("?code=");
       window.history.pushState({}, null, newUrl[0]);
       setLoading(true);
+      setDisabledForm(true);
 
       const code = newUrl[1];
 
       handleOnLoginGithub(code);
     }
-  }, [state, dispatch, context, errors]);
+  }, []);
 
   checkLoginState(state);
 
@@ -142,7 +162,16 @@ export default function Login() {
   }
 
   function resetFormOnError(errors) {
-    if (errors.email || errors.register[0] === "False") {
+    // check if errors is null, then server is probably down
+    if (!errors) {
+      setErrors({
+        email: " ",
+        password: "Erro ao fazer login",
+      });
+      return;
+    }
+
+    if (errors.email || (errors.register && errors.register[0] === "False")) {
       errors.email
         ? setErrors({ email: errors.email[0] })
         : setErrors({ email: errors.detail[0] });
@@ -155,7 +184,7 @@ export default function Login() {
     !(errors.register || errors.email) &&
       setErrors({ email: errors, password: errors });
 
-    localStorage.clear();
+    sessionStorage.clear();
     setLoading(false);
   }
 
@@ -167,30 +196,19 @@ export default function Login() {
       rememberMe: rememberMe,
     };
 
-    const response = await context.Login(user);
+    const response = await authContext.Login(user);
 
-    // setTimeout(() => {
-    if (response.status === 200) {
-      const user = response.data.user;
-      delete response.data["user"];
-
-      dispatch({
-        type: "LOGIN",
-        payload: {
-          user: user,
-          isLoggedIn: true,
-          tokens: response.data,
-        },
-      });
+    if (response?.status === 200) {
+      console.log("response.data: ", response.data);
+      fetchSubmissionsAndLogin(response.data);
     } else {
-      resetFormOnError(response.data);
+      resetFormOnError(response?.data);
     }
 
     setDisabledForm(false);
     setTimeout(() => {
       setLoading(false);
     }, 1000);
-    // }, 2000);
   };
 
   function handleOnSubmit(e) {
@@ -202,11 +220,22 @@ export default function Login() {
 
   return (
     <AuthContainer>
+      <StyledLink
+        to={paths.homepage}
+        style={{ display: "none" }}
+        id="styled-link-homepage"
+      />
+      <StyledLink
+        to={paths.bind}
+        style={{ display: "none" }}
+        id="styled-link-bind"
+      />
       <Topbar
         nonAuth
         topbarButtonText="Cadastre-se"
         toPath={paths.signup}
         IconElement={<LogoButton />}
+        disabledButtons={disabledForm}
       />
       <AuthLeftContainer>
         <AuthLeftContainerHeader>

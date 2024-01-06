@@ -1,3 +1,5 @@
+from gitupper.platforms.serializers import HackerUsersSerializer, BeeUsersSerializer, LeetUsersSerializer
+from gitupper.github.serializers import GithubUsersSerializer
 from platforms.utils.commons import platforms
 from .models import User
 
@@ -8,15 +10,15 @@ def check_id_has_owner(requesting_user_id: int, binded_user: User):
     return False  # Essa conta já foi vinculada a outro usuário
 
 
-def check_user_binded(requesting_user_id: int, platform_prefix: str, platform_id, check_all: bool = False):
+def check_user_binded(requesting_user_id: int, platform_prefix: str, platform_user, check_all: bool = False):
     if check_all:
         user = User.objects.get(gitupper_id=requesting_user_id)
 
         for platform in platforms:
             try:
-                id = getattr(user, f"{platform}_id")
+                platform_user = getattr(user, f"{platform}user")
 
-                if id:
+                if platform_user:
                     return True
             except Exception as e:
                 print(e)
@@ -24,8 +26,8 @@ def check_user_binded(requesting_user_id: int, platform_prefix: str, platform_id
         return False
 
     try:  # verificando se já existe user bindado com o id em questão e se bate com o user solicitante
-        platform_param = f"{platform_prefix}_id"
-        fields = {platform_param: platform_id}
+        platform_param = f"{platform_prefix}user"
+        fields = {platform_param: platform_user}
 
         user = User.objects.get(**fields)
         same_user = check_id_has_owner(requesting_user_id, user)
@@ -56,7 +58,7 @@ def make_user_obj(user: any, gitupper_user: any = None, platform: bool = False):
 
         user_obj = {
             "gitupper_id": gitupper_user.gitupper_id,
-            "github_id": gitupper_user.github_id,
+            "github_user": GithubUsersSerializer(gitupper_user.github_user).data,
             "email": user.email,
             "profile_image": getattr(gitupper_user, "profile_image", getattr(gitupper_user, "avatar_url", "")).url,
             "first_name": name[0],
@@ -68,7 +70,7 @@ def make_user_obj(user: any, gitupper_user: any = None, platform: bool = False):
     else:
         user_obj = {
             "gitupper_id": user.gitupper_id,
-            "github_id": user.github_id,
+            "github_user": GithubUsersSerializer(user.github_user).data,
             "email": user.email,
             "profile_image": user.profile_image.url,
             "first_name": name[0],

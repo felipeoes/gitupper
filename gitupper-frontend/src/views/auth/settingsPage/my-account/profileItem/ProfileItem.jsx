@@ -38,7 +38,7 @@ export default function ProfileItem({ user }) {
             {user.first_name} {user.last_name}
             <IconButton
               sx={{
-                marginBottom: 0.5,
+                marginBottom: "4px",
                 marginLeft: 0.5,
               }}
             >
@@ -53,8 +53,8 @@ export default function ProfileItem({ user }) {
         type="button"
         bgColor={theme.colors.primary}
         width={216}
-        marginRight={32}
-        paddingRL={16}
+        marginRight={64}
+        // paddingRL={16}
         onClick={onClickButton}
       >
         Compartilhar perfil

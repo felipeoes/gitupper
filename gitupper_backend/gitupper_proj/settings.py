@@ -15,8 +15,10 @@ key = os.getenv(
 SECRET_KEY = key
 
 DEBUG = True
-ALLOWED_HOSTS = ['http://localhost:3000', '127.0.0.1',
-                 'https://gitupper-frontend.vercel.app']
+# ALLOWED_HOSTS = ['http://localhost:3000', '127.0.0.1',
+#                  'https://gitupper-frontend.vercel.app']
+
+ALLOWED_HOSTS = ['*']
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
@@ -24,11 +26,14 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8000",
     "https://gitupper-frontend.vercel.app"
 ]
+CORS_ALLOW_CREDENTIALS = True
+
 
 # Application definition
 INSTALLED_APPS = [
+    'daphne',
     'channels',
-    'chat',
+    # 'chat',
     'whitenoise.runserver_nostatic',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -40,6 +45,7 @@ INSTALLED_APPS = [
     'django_filters',
     'rest_framework',
     'rest_framework.authtoken',
+    'rest_framework_simplejwt.token_blacklist',
     'rest_auth',
     'rest_auth.registration',
     'allauth',
@@ -139,21 +145,25 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
     'DATETIME_FORMAT': "%d/%m/%Y %H:%M:%S",
-    'DEFAULT_AUTHENTICATION_CLASSES': [
+    'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ],
 
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    ),
+
+    'DEFAULT_PAGINATION_CLASS': 'gitupper_proj.pagination.CustomPagination',
     'PAGE_SIZE': 100
 }
+
+AUTHENTICATION_BACKENDS = ('gitupper.authenticate.CustomAuthentication',
+                           'django.contrib.auth.backends.ModelBackend',)
 
 DATETIME_INPUT_FORMATS = [
     '%d/%m/%Y %H:%M:%S',
 ]
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),  # change to 30 min later
+    'REFRESH_TOKEN_LIFETIME': timedelta(hours=6),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': False,
@@ -181,6 +191,8 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
     'SLIDING_TOKEN_LIFETIME': timedelta(hours=6),
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=7),
+
+
 }
 
 
@@ -202,13 +214,13 @@ ACCOUNT_AUTHENTICATION_METHOD = 'email'
 
 # CHANNELS
 
-ASGI_APPLICATION = "gitupper_proj.routing.application"
+ASGI_APPLICATION = "gitupper_proj.asgi.application"
 
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "BACKEND": "channels_redis.pubsub.RedisPubSubChannelLayer",
         "CONFIG": {
-            "hosts": [os.environ.get('REDIS_URL', 'redis://localhost:6379')],
+            "hosts": [os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379')],
         },
     },
 }

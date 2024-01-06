@@ -10,10 +10,13 @@ export default function Filter({
   filteringRows,
   setFilteredRows,
   searchValue,
-  setSearchingValue,
+  // setSearchingValue,
+  handleOnSubmitSearchText,
   langOptions,
   disabled,
 }) {
+  const [searchText, setSearchText] = useState("");
+  const [loadingSearch, setLoadingSearch] = useState(false);
   const [filteringColumns, setFilteringColumns] = useState([]);
   const [filters, setFilters] = useState(createFiltersObj());
   const [rows, setRows] = useState(filteringRows);
@@ -81,9 +84,9 @@ export default function Filter({
       ? (filterRequest = true)
       : (filterRequest = false);
 
-    column === "date_submitted"
-      ? requestSearch(null, filter[0], filter[1], filterRequest)
-      : requestSearch(filter, null, null, filterRequest);
+    // column === "date_submitted"
+    //   ? requestSearch(null, filter[0], filter[1], filterRequest)
+    //   : requestSearch(filter, null, null, filterRequest);
   }
 
   function handleOnRemoveFilters() {
@@ -100,81 +103,95 @@ export default function Filter({
   function format_prog_language(prog_language) {
     return prog_language.split(" ")[0].replace(/[0-9]/g, "");
   }
-  const requestSearch = (searchValue, startDate, endDate, filterRequest) => {
-    let targetRows = filteringRows;
+  // const requestSearch = (searchValue, startDate, endDate, filterRequest) => {
+  //   let targetRows = filteringRows;
 
-    if (filterRequest) {
-      targetRows = rows;
-    }
+  //   if (filterRequest) {
+  //     targetRows = rows;
+  //   }
 
-    if (startDate) {
-      const filteredRows = targetRows.filter((row) => {
-        let submission_date = new Date(
-          row.date_submitted.split(" ")[0].split("/").reverse().join("/")
-        );
-        return submission_date >= startDate && submission_date <= endDate;
-      });
+  //   if (startDate) {
+  //     const filteredRows = targetRows.filter((row) => {
+  //       let submission_date = new Date(
+  //         row.date_submitted.split(" ")[0].split("/").reverse().join("/")
+  //       );
+  //       return submission_date >= startDate && submission_date <= endDate;
+  //     });
 
-      setRows(filteredRows);
-      setFilteredRows(filteredRows);
-    } else if (searchValue) {
-      let filteredRows = null;
+  //     setRows(filteredRows);
+  //     setFilteredRows(filteredRows);
+  //   } else if (searchValue) {
+  //     let filteredRows = null;
 
-      if (typeof searchValue === "object") {
-        filteredRows = targetRows.filter((row) => {
-          return Object.keys(row).some((field) => {
-            return field !== "source_code" && field === "prog_language"
-              ? searchValue.includes(format_prog_language(row[field]))
-              : searchValue.includes(row[field].toString());
-          });
-        });
-      } else {
-        setSearchingValue(searchValue);
+  //     if (typeof searchValue === "object") {
+  //       filteredRows = targetRows.filter((row) => {
+  //         return Object.keys(row).some((field) => {
+  //           return field !== "source_code" && field === "prog_language"
+  //             ? searchValue.includes(format_prog_language(row[field]))
+  //             : searchValue.includes(row[field].toString());
+  //         });
+  //       });
+  //     } else {
+  //       setSearchText(searchValue);
 
-        const searchRegex = new RegExp(escapeRegExp(searchValue), "i");
-        filteredRows = targetRows.filter((row) => {
-          return Object.keys(row).some((field) => {
-            return (
-              field !== "source_code" && searchRegex.test(row[field].toString())
-            );
-          });
-        });
-      }
+  //       const searchRegex = new RegExp(escapeRegExp(searchValue), "i");
+  //       filteredRows = targetRows.filter((row) => {
+  //         return Object.keys(row).some((field) => {
+  //           return (
+  //             field !== "source_code" && searchRegex.test(row[field].toString())
+  //           );
+  //         });
+  //       });
+  //     }
 
-      setFilteredRows(filteredRows);
-      setRows(filteredRows);
-    } else {
-      setSearchingValue("");
-      setRows(filteringRows);
-      setFilteredRows(filteringRows);
-    }
-  };
+  //     setFilteredRows(filteredRows);
+  //     setRows(filteredRows);
+  //   } else {
+  //     setSearchText("");
+  //     setRows(filteringRows);
+  //     setFilteredRows(filteringRows);
+  //   }
+  // };
 
+  async function requestSearch(searchText) {
+    setLoadingSearch(true);
+    await handleOnSubmitSearchText(searchText);
+
+    setLoadingSearch(false);
+  }
   return (
     <FilterContainer>
       <SearchFilterButtonsContainer>
         <SearchFilter
-          placeholder="Buscar"
-          value={searchValue}
-          onChange={(e) => requestSearch(e.target.value)}
-          clearSearch={() => setSearchingValue("")}
+          placeholder="Buscar por nome"
+          value={searchText}
+          // onChange={(e) => requestSearch(e.target.value)}
+          onChange={(e) =>
+            e.target.value
+              ? setSearchText(e.target.value)
+              : (setSearchText(""), requestSearch(""))
+          }
+          clearSearch={() => setSearchText("")}
           disabled={disabled}
+          onClick={() => requestSearch(searchText)}
+          loading={loadingSearch}
         />
 
         <DropdownMenu
           button
           Icon={MdAdd}
           buttonWidth={160}
-          buttonHeight={36}
+          buttonHeight={40}
           buttonText="Adicionar filtro"
           iconMr={8}
-          buttonMl={24}
+          buttonMt={4}
           filteringColumns={filteringColumns}
           menuItems={columns}
           onClickItem={(item) => {
             setFilteringColumns((columns) => columns.concat(item));
           }}
-          disabled={disabled}
+          disabled={true}
+          // disabled={disabled}
         />
       </SearchFilterButtonsContainer>
       <HorizontalList
@@ -185,6 +202,7 @@ export default function Filter({
         itemsList={filteringColumns}
         handleOnRemoveFilters={handleOnRemoveFilters}
         onClickClose={(itemId) => onClickItemClose(itemId)}
+        disabled={true}
       />
     </FilterContainer>
   );

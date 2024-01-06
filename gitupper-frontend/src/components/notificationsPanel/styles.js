@@ -17,12 +17,9 @@ export const StyledBadge = styled(Badge)((props) => ({
 export const NotitificationsPanelContainer = styled.div`
   display: flex;
   flex-direction: column;
-  /* height: 200px; */
+  max-height: 228px;
   overflow: auto;
-  
   border-radius: 4px;
-  /* box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); */
-  /* padding: 0 16px; */
-  /* max-width: 400px; */
-  /* background-color: "white"; */
+
+  padding: 0px 16px;
 `;

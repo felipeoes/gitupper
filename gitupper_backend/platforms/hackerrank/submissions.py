@@ -1,136 +1,159 @@
 import time
 from requests_html import HTMLSession
-
-from .config import *
-from .selenium_helper import run_helper
-
+from platforms.base_submissions_fetcher import BaseSubmissionsFetcher
 from platforms.utils.commons import format_submission
-from gitupper.models import HackerUser, HackerSubmission
+from gitupper.models import HackerUser, HackerSubmission, TemporaryProgress
+from platforms.submissions_saver import save_submissions, check_submissions_offset, format_datetime
 from platforms.utils.commons import *
 from platforms.utils.files import *
-from platforms.user import HackerrankUser, create_user
+from platforms.user import HackerrankUser
+
+from .config import *
+from datetime import datetime
 
 
-def authenticate_session(hacker_session: str, gitupper_id: int = None):
-    session = HTMLSession()
+# Since this class implements BaseSubmissionsFetcher, it will need to implement fetch_submissions method.
+# BaseSubmissionsFetcher has a get_submissions method that will call fetch_submissions and return the result.
 
-    session.cookies.set(domain="www.hackerrank.com",
-                        name=hackerrank_session_cookie_name, value=hacker_session)
+class HackerSubmissionsFetcher(BaseSubmissionsFetcher):
+    def __init__(self, user: HackerrankUser, gitupper_id: str, options: dict = {}):
+        super().__init__(user, gitupper_id, options)
+        self.__session: HTMLSession = user.active_session
+        self.fetch_until = SUBMISSIONS_LIMIT
+        self.total_submissions = 0
+        self.progress = 0
 
-    res_json = response_json_parser(session.get("{}/me".format(
-        hackerrank_profile_url), headers=base_headers))
+    @property
+    def session(self):
+        return self.__session
 
-    user = HackerrankUser(hacker_id=res_json["model"]["id"], name=res_json["model"]["name"],
-                          email=res_json["model"]["email"], active_session=session)
+    def get_detailed_submission(self, submission_id: int):
+        res_json = response_json_parser(self.session.get(
+            "{}/{}".format(hackerrank_submissions_url, submission_id), headers=base_headers))
 
-    create_user(user, gitupper_id, access_token=hacker_session)
+        return res_json["model"]
 
-    return user
+    def retrieve_submission(self, submission, hacker_user, temp_progress):
+        detailed_submission = self.get_detailed_submission(
+            submission["id"])
 
+        formatted_prog_language = format_prog_language(
+            detailed_submission['language'])
+        formatted_problem_name = format_problem_name(
+            detailed_submission['name'])
 
-def authenticate_user(login: str, password: str, gitupper_id: int = None):
-    session = HTMLSession()
+        filename = format_filename(
+            detailed_submission["challenge_id"], formatted_problem_name, formatted_prog_language)
 
-    username, _hrank_session = run_helper(login, password)
+        hacker_submission = HackerSubmission(id=detailed_submission['id'], user=hacker_user, problem_name=detailed_submission['name'], challenge_id=detailed_submission["challenge_id"], status=detailed_submission['status'], contest_id=detailed_submission['contest_id'],
+                                             prog_language=detailed_submission['language'], category=detailed_submission['kind'], date_submitted=detailed_submission["created_at"], source_code=detailed_submission['code'], display_score=detailed_submission['display_score'], filename=filename)
 
-    if not _hrank_session:
-        error = {
-            "login": "Não foi possível realizar o login",
-        }
-        return error
+        self.progress += round(1 / self.total_submissions * 100, 2)
+        print(f"Progress: {self.progress}%")
+        temp_progress.value = self.progress
+        temp_progress.save()
 
-    session.cookies.set(domain="www.hackerrank.com",
-                        name=hackerrank_session_cookie_name, value=_hrank_session)
+        return hacker_submission
 
-    res_json = response_json_parser(session.get("{}/{}".format(
-        hackerrank_profile_url, username), headers=base_headers))
+    def get_starting_offset_from_submission(self, last_submission_datetime: datetime):
+        # Get the offset from the submission datetime
+        res_json = response_json_parser(self.session.get(
+            f"{hackerrank_submissions_url}?offset=0&limit={SUBMISSIONS_LIMIT}", headers=base_headers))
 
-    user = HackerrankUser(hacker_id=res_json["model"]["id"], name=res_json["model"]["name"],
-                          email=res_json["model"]["email"], active_session=session)
+        # submissions are fetched in descending order of datetime, so the newer submissions have offset 0.
+        list_length = len(res_json["models"])
 
-    create_user(user, gitupper_id, access_token=_hrank_session)
+        if list_length > 0:
+            for index, submission in enumerate(res_json["models"]):
+                if format_datetime(submission["created_at"]) > last_submission_datetime:
+                    inner_index = index
+                    # Newer submission found. Check if the next submission is also newer than the last submission
+                    while inner_index + 1 < list_length and format_datetime(res_json["models"][inner_index + 1]["created_at"]) > last_submission_datetime:
+                        self.fetch_until += 1
+                        inner_index += 1
+                        continue
+                    else:
+                        # if it isn't, then return the offset
+                        self.fetch_until += 1
+                        return self.fetch_until
 
-    return user
+        # If it reaches this point, it means that there are no newer submissions
+        return None
 
+    def check_is_up_to_date(self, offset):
+        # if offset is none then it means that there are no new submissions
+        return offset is None
 
-def get_detailed_submission(submission_id: int, session: HTMLSession):
+    def fetch_submissions(self):
+        # Check if should fetch from offset
+        last_submission_id, last_submission_datetime = check_submissions_offset(
+            self.gitupper_id, 'hacker')
 
-    res_json = response_json_parser(session.get(
-        "{}/{}".format(hackerrank_submissions_url, submission_id), headers=base_headers))
+        if last_submission_datetime is not None:
+            fetch_until = self.get_starting_offset_from_submission(
+                last_submission_datetime)
 
-    return res_json["model"]
+            if fetch_until is not None:
+                self.fetch_until = fetch_until
 
+            if self.check_is_up_to_date(fetch_until):
+                return {"already_updated": True}
 
-def retrieve_submission(submission, hacker_user: HackerUser, session: HTMLSession):
-    detailed_submission = get_detailed_submission(
-        submission["id"], session)
+        try:
 
-    formatted_prog_language = format_prog_language(
-        detailed_submission['language'])
-    formatted_problem_name = format_problem_name(detailed_submission['name'])
+            res_json = response_json_parser(self.session.get(
+                f"{hackerrank_submissions_url}?offset=0&limit={self.fetch_until}", headers=base_headers))
 
-    filename = format_filename(
-        detailed_submission["challenge_id"], formatted_problem_name, formatted_prog_language)
+            list_length = len(res_json["models"])
 
-    hacker_submission = HackerSubmission(id=detailed_submission['id'], user=hacker_user, problem_name=detailed_submission['name'], challenge_id=detailed_submission["challenge_id"], status=detailed_submission['status'], contest_id=detailed_submission['contest_id'],
-                                         prog_language=detailed_submission['language'], category=detailed_submission['kind'], date_submitted=detailed_submission["created_at"], source_code=detailed_submission['code'], display_score=detailed_submission['display_score'], filename=filename)
-    hacker_submission.save()
+            if list_length > 0:
+                submissions = []
+                retry_list = []
 
-    return hacker_submission
+                hacker_user = HackerUser.objects.get(
+                    hacker_id=self.user.hacker_id)
 
+                self.total_submissions = self.total_submissions if self.total_submissions > 0 else list_length
 
-def get_submissions(user: HackerrankUser, options=None, gitupper_id: int = None):
-    session = user.active_session
-    hacker_user = HackerUser.objects.get(hacker_id=user.hacker_id)
+                # Start progress, so frontend can track it
+                temp_progress = TemporaryProgress(
+                    value=self.progress, gitupper_id=self.gitupper_id)
+                temp_progress.save()
 
-    res_json = response_json_parser(session.get("{}/?limit={}".format(
-        hackerrank_submissions_url, SUBMISSIONS_LIMIT), headers=base_headers))
+                for submission in res_json["models"]:
+                    try:
+                        detailed_submission = self.retrieve_submission(
+                            submission, hacker_user, temp_progress)
+                        submissions.append(format_submission(
+                            detailed_submission, "hacker"))
 
-    list_length = len(res_json["models"])
+                    except Exception as e:
+                        print(e)
+                        retry_list.append(submission)
 
-    if list_length > 0:
-        submissions = []
-        retry_list = []
+                if len(retry_list) > 0:
+                    time.sleep(35)
 
-        for submission in res_json["models"]:
-            try:
-                detailed_submission = retrieve_submission(
-                    submission, hacker_user, session)
-                submissions.append(format_submission(
-                    detailed_submission, "hacker"))
+                while len(retry_list) > 0:
+                    submission = retry_list.pop(0)
 
-            except Exception as e:
-                print(e)
-                retry_list.append(submission)
+                    try:
+                        detailed_submission = self.retrieve_submission(
+                            submission, hacker_user, temp_progress)
+                        submissions.append(format_submission(
+                            detailed_submission, "hacker"))
+                    except Exception as e:
+                        retry_list.append(submission)
 
-        if len(retry_list) > 0:
-            time.sleep(35)
+                # save submissions
+                save_submissions(submissions, 'hacker', hacker_user)
 
-        # with concurrent.futures.ThreadPoolExecutor() as executor:
-        #     responses = {executor.submit(retrieve_submission, res_json["models"]
-        #                                  [number], hacker_user, session): res_json["models"]
-        #                  [number] for number in range(list_length)}
+                temp_progress.value = 100
+                temp_progress.save()
 
-        #     for response in concurrent.futures.as_completed(responses):
-        #         submission = responses[response]
+                return submissions
 
-        #         try:
-        #             hacker_submission = response.result()
-        #             submissions.append(format_submission(
-        #                 hacker_submission, "hackerrank"))
-        #         except Exception as e:
-        #             retry_list.append(submission)
-
-        while len(retry_list) > 0:
-            submission = retry_list.pop(0)
-
-            try:
-                detailed_submission = retrieve_submission(
-                    submission, hacker_user, session)
-                submissions.append(format_submission(
-                    detailed_submission, "hacker"))
-            except Exception as e:
-                retry_list.append(submission)
-        return submissions
-
-    return res_json["models"]
+            return res_json["models"]
+        except Exception as e:
+            print(e)
+            return {"error": "Ocorreu um erro ao tentar buscar suas submissões."}

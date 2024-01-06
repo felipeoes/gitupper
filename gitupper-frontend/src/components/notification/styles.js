@@ -7,6 +7,16 @@ export const NotificationContainer = styled.div`
   height: 100%;
 `;
 
+export const NotificationHeader = styled.div`
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  /* height: 48px;
+  padding: 0 16px; */
+`;
+
 export const NotificationTitle = styled.h2`
   font-family: "InterSemiBold";
   font-size: 16px;
@@ -28,6 +38,15 @@ export const NotificationSubtitle = styled.span`
 export const NotificationContentContainer = styled.div`
   display: flex;
   flex-direction: column;
+  font-family: InterRegular;
+  font-size: 14px;
+`;
+
+export const SubmissionJobContainer = styled.div`
+  display: flex;
+  flex-direction: space-between;
+  width: 100%;
+  margin-top: 16px;
   font-family: InterRegular;
   font-size: 14px;
 `;

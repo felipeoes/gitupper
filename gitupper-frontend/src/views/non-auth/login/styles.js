@@ -67,6 +67,7 @@ export const StyledLink = styled(Link)`
   margin-bottom: ${(props) => props.marginBottom || 0}px;
 
   width: ${(props) => props.width || "fit-content"};
+  height: ${(props) => props.height || "fit-content"};
 
   ${(props) => (props.disabled ? "pointer-events: none;" : "")}
 
@@ -110,7 +111,7 @@ export const LoginContainerDividerText = styled.p`
   text-align: center;
   line-height: 22px;
 
-  margin-top: 28px;
+  margin-top: 24px;
 
   color: ${(props) => props.theme.colors.black};
 `;
@@ -178,5 +179,5 @@ export const LottieContainer = styled.div`
 export const GithubOauthLink = styled.a`
   text-decoration: none;
 
-  margin-top: ${(props) => props.marginTop || 24}px;
+  margin-top: ${(props) => props.marginTop || 8}px;
 `;

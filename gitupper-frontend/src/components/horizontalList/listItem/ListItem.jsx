@@ -68,9 +68,7 @@ export default function ListItem({
         FilterView={FilterView}
         columnId={itemId}
         menuWidth={227}
-        // onClickItem={(item) => console.log("Novo filtro: ", item)}
       />
-      {/* )} */}
     </ListItemContainer>
   );
 }

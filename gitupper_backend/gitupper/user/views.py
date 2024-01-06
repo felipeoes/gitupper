@@ -16,7 +16,7 @@ class UsersViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated, IsAccountOwner]
 
     def get_queryset(self):
-        if self.request.user.is_admin:
+        if self.request.user.is_superuser:
             queryset = User.objects.all()
         else:
             queryset = User.objects.filter(
@@ -31,6 +31,7 @@ class ListUserByGithubIdSerializer(ListAPIView):
     serializer_class = UsersSerializer
 
     def get_queryset(self):
-        queryset = User.objects.filter(github_id=self.kwargs['github_id'])
+        queryset = User.objects.filter(
+            github_user__github_id=self.kwargs['github_id'])
 
         return queryset

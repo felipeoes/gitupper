@@ -9,9 +9,7 @@ import { ArrowContainer } from "./styles";
 function Arrow({ children, disabled, onClick, left }) {
   const theme = useTheme();
   return (
-    <ArrowContainer
-      left={left}
-    >
+    <ArrowContainer left={left}>
       <IconButton
         onClick={onClick}
         disabled={disabled}
@@ -49,10 +47,7 @@ export function LeftArrow({ hasItem }) {
   }, [isFirstItemVisible, visibleItemsWithoutSeparators]);
 
   return (
-    // hasItem && (
-    //   <Arrow left disabled={disabled} onClick={() => scrollPrev()}></Arrow>
-    // )
-    <Arrow left disabled={disabled} onClick={() => scrollPrev()} />
+    hasItem && <Arrow left disabled={disabled} onClick={() => scrollPrev()} />
   );
 }
 
@@ -70,9 +65,8 @@ export function RightArrow({ hasItem }) {
   }, [isLastItemVisible, visibleItemsWithoutSeparators]);
 
   return (
-    // hasItem && (
-    //   <Arrow right disabled={disabled} onClick={() => scrollNext()}></Arrow>
-    // )
-    <Arrow right disabled={disabled} onClick={() => scrollNext()}></Arrow>
+    hasItem && (
+      <Arrow right disabled={disabled} onClick={() => scrollNext()}></Arrow>
+    )
   );
 }

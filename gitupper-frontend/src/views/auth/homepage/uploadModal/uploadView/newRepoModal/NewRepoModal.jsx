@@ -28,9 +28,9 @@ export default function NewRepoModal({ handleOnNewRepo, handleOnClose }) {
   };
 
   return (
-    <Container width={446}>
+    <Container width="440px" id='new-repo-modal'>
       <DialogTitle>Criar um novo repositório</DialogTitle>
-      <DialogContent>
+      <DialogContent >
         <DialogContentText>
           Deseja fazer o upload de suas submissões para um novo repositório?
           Você pode criá-lo aqui mesmo!

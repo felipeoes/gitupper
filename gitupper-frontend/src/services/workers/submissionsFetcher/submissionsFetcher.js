@@ -1,4 +1,5 @@
-export default function SubmissionsFetcherWorker() {
+/* eslint-disable no-restricted-globals */
+export default function SubmissionsFetcherWorker({ fetchURL }) {
   async function fetchSubmissions(platform, authToken) {
     // fetch submissions from platform using native API
     const data = {
@@ -7,7 +8,7 @@ export default function SubmissionsFetcherWorker() {
 
     console.log(data);
 
-    const response = await fetch(`http://127.0.0.1:8000/fetch/submissions/`, {
+    const response = await fetch(fetchURL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${authToken}`,
@@ -15,11 +16,18 @@ export default function SubmissionsFetcherWorker() {
       body: JSON.stringify(data),
     });
 
-    const responseData = await response.json();
+    console.log("************** RESPONSE Fetcher", response)
 
-    console.log("************** DADOS DO WORKER", responseData);
+    let res = await response.json();
 
-    let submissions = responseData[`${platform}_submissions`];
+    if (res.error) {
+      return JSON.stringify(res);
+    }
+
+    // if success, res will be an array of submissions
+    let submissions = res;
+
+    console.log("************** DADOS DO WORKER", submissions);
 
     if (response.status === 200 && submissions) {
       // concatena submissões aceitas e não aceitas, caso existam
@@ -33,19 +41,29 @@ export default function SubmissionsFetcherWorker() {
       return submissions;
     }
 
-    return response;
+    return JSON.stringify(response); // é necessário retornar uma string como mensagem
   }
 
   onmessage = async function (e) {
     console.log("Worker: Message received from main script");
-    const platform = e.data.platform;
+    const platform = e.data.platformPrefix;
     const authToken = e.data.authToken;
 
-    const submissions = await fetchSubmissions(platform, authToken);
+    const response = await fetchSubmissions(platform, authToken);
+
+    if (typeof response === "string") {
+      postMessage({
+        command: "error",
+        error: JSON.parse(response),
+      });
+      return;
+    }
 
     postMessage({
       command: "done",
-      submissions: submissions,
+      submissions: response,
     });
+
+    close();
   };
 }

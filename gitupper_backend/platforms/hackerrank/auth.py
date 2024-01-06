@@ -1,10 +1,11 @@
 from lxml import etree
+from requests_html import HTMLSession
 from platforms.auth import Authenticator
-from platforms.auth import PLATFORM_COOKIES
-from platforms.hackerrank.selenium_helper import retrieve_hrank_session
 from platforms.user import HackerrankUser, create_user
+from platforms.utils.commons import response_json_parser
 from platforms.utils.requester import Requester
-from .config import *
+from .selenium_helper import run_helper
+from .config import base_headers, hackerrank_login_url, hackerrank_profile_url
 
 
 class HackerAuthenticator(Authenticator):
@@ -21,53 +22,54 @@ class HackerAuthenticator(Authenticator):
     def html_parser(self):
         return self.__html_parser
 
-    def get_session_cookie(self):
-        # A requesição abaixo já seta o cookie de sessão
-        self.req.make_request(hackerrank_login_url)
+    def authenticate(self, login: str, password: str):
+        session = HTMLSession()
 
-        return self.req.get_cookie_dict()['hackerrank_session_cookie_name']
+        username, _hrank_session = run_helper(login, password)
 
-    def get_bee_info(self, response: str):
-        tree = etree.fromstring(response, self.html_parser)
+        if not _hrank_session:
+            error = {
+                "login": "Não foi possível realizar o login",
+            }
+            return error
 
-        encoded_email = tree.xpath(
-            ".//a[@data-cfemail] ")[0].get('data-cfemail')
-        email = self.decode_cf_email(encoded_email)
+        cookie = self.get_platform_cookie('hacker')
+        session.cookies.set(domain=cookie.get('domain'),
+                            name=cookie.get('name'), value=_hrank_session)
 
-        profile_link = [elem.get('href') for elem in tree.xpath(".//a")][0]
-        profile_value = profile_link.find("profile")
+        res_json = response_json_parser(session.get("{}/{}".format(
+            hackerrank_profile_url, username), headers=base_headers))
 
-        if profile_value == -1:
+        user = HackerrankUser(hacker_id=res_json["model"]["id"], name=res_json["model"]["name"],
+                              email=res_json["model"]["email"], active_session=session)
+
+        create_user(user, self.gitupper_id, access_token=_hrank_session,
+                    token_expires=self.get_session_cokie_expiration(self.get_expiration_cookie_name('hacker')))
+
+        return user
+
+    def authenticate_session(self):
+        session = HTMLSession()
+
+        cookie = self.get_platform_cookie('hacker')
+        session.cookies.set(domain=cookie.get('domain'), name=cookie.get('name'),
+                            value=self.session_id)
+
+        try:
+            res_json = response_json_parser(session.get("{}/me".format(
+                hackerrank_profile_url), headers=base_headers))
+
+            user = HackerrankUser(hacker_id=res_json["model"]["id"], name=res_json["model"]["name"],
+                                  email=res_json["model"]["email"], active_session=session)
+
+        except Exception as e:
+            print(e)
+
+            # Token expired
+            self.notify_token_expired('hacker')
             return None
 
-        starting_point = profile_value + len("profile/")
-        bee_id = profile_link[starting_point:]
+        create_user(user, self.gitupper_id, access_token=self.session_id,
+                    token_expires=self.get_session_cokie_expiration(self.get_session_cookie_name('hacker')))
 
-        return email, bee_id
-
-    # def authenticate_user(login: str, password: str, gitupper_id: int = None):
-    #     session = HTMLSession()
-
-        
-
-    #     if not _hrank_session:
-    #         error = {
-    #             "login": "Não foi possível realizar o login",
-    #         }
-    #         return error
-
-    #     session.cookies.set(domain="www.hackerrank.com",
-    #                         name=hackerrank_session_cookie_name, value=_hrank_session)
-
-    #     res_json = response_json_parser(session.get("{}/{}".format(
-    #         hackerrank_profile_url, username), headers=base_headers))
-
-    #     user = HackerrankUser(hacker_id=res_json["model"]["id"], name=res_json["model"]["name"],
-    #                           email=res_json["model"]["email"], active_session=session)
-
-    #     create_user(user, gitupper_id, access_token=_hrank_session)
-
-    #     return user
-
-    # def authenticate(self):
-    #     username, _hrank_session = retrieve_hrank_session(self.login, self.password)
+        return user

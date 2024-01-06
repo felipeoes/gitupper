@@ -1,16 +1,35 @@
-from .submissions import authenticate_user, get_submissions, authenticate_session
-from platforms.user import HackerrankUser
+from gitupper.models import User
+from platforms.utils.commons import error_msg
+from .submissions import HackerSubmissionsFetcher
+from .auth import HackerAuthenticator
 
 
-def get_hacker_submissions(user: HackerrankUser,  gitupper_id: int = None, options: dict = None):
+def get_hacker_submissions(user: User,  gitupper_id: int = None, options: dict = None):
     access_token = user.hackeruser.access_token
 
-    hacker_user = authenticate_session(access_token, gitupper_id)
+    auth = HackerAuthenticator(
+        None, None, access_token, gitupper_id)
+
+    hacker_user = auth.authenticate_session()
+
+    if not hacker_user:
+        return error_msg("Token inválido")
+
+    fetcher = HackerSubmissionsFetcher(hacker_user, gitupper_id, options)
     try:
-        submissions = get_submissions(
-            hacker_user, options, gitupper_id)
-        user.hacker_submissions = submissions
-        return user
+        submissions = fetcher.get_submissions()
+
+        if isinstance(submissions, dict):
+            error = submissions.get("error")
+            if error:
+                return error_msg(error)
+
+            already_updated = submissions.get("already_updated")
+            
+            if already_updated:
+                return {"already_updated": already_updated}
+
+        return submissions
     except Exception as e:
         print(e)
         return None
@@ -18,10 +37,13 @@ def get_hacker_submissions(user: HackerrankUser,  gitupper_id: int = None, optio
 
 def retrieve_hacker_user(login: str = None, password: str = None, hacker_session: str = None, gitupper_id: int = None):
     try:
+        auth = HackerAuthenticator(
+            login, password, hacker_session, gitupper_id)
+
         if login and password:
-            user = authenticate_user(login, password, gitupper_id)
+            user = auth.authenticate(login, password)
         else:
-            user = authenticate_session(hacker_session, gitupper_id)
+            user = auth.authenticate_session()
         return user
     except Exception as e:
         print(e)

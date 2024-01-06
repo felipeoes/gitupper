@@ -1,17 +1,16 @@
-import { useContext, useState, useEffect, useCallback } from "react";
+/* eslint-disable react-hooks/rules-of-hooks */
+import { useContext, useState, useCallback, useRef, useEffect } from "react";
 import { AuthContext } from "../../../../contexts";
 import DynamicTable from "../../../../components/dynamicTable/DynamicTable";
 import { CustomTableToolbar } from "../../../../components/dynamicTable/customTableToolbar/CustomTableToolbar";
-import { TablePagination } from "@mui/material";
+import { Box, TablePagination } from "@mui/material";
 import ServicesModal from "./../../../../components/modal/Modal";
 import UploadModal from "./../uploadModal/UploadModal";
+import { DashboardButtonsContainer } from "../styles";
+import Filter from "../../../../components/filter/Filter";
 
 export default function SubmissionsPanel({
-  loading,
-  submissions,
-  rowsPerPage,
   submissionsColumns,
-  searchText,
   platform,
   maxHeight,
   categoryOptions,
@@ -20,21 +19,32 @@ export default function SubmissionsPanel({
   statusOptions,
   ...props
 }) {
-  const [order, setOrder] = useState("desc");
-  const [orderBy, setOrderBy] = useState("id");
   const [selected, setSelected] = useState([]);
   const [page, setPage] = useState(0);
-  const [rows, setRows] = useState(submissions);
-
-  const [buttonLoading, setButtonLoading] = useState({
-    download: false,
-    upload: false,
-  });
+  const [rows, setRows] = useState([]);
+  const [totalRows, setTotalRows] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [selectAllChecked, setSelectAllChecked] = useState(false);
   const [uploadModal, setUploadModal] = useState(null);
+  // const [submissionsOptions, setSubmissionsOptions] = useState({
+  //   category: [],
+  //   date: [],
+  //   language: [],
+  //   status: [],
+  // });
 
   const context = useContext(AuthContext);
   const { state, dispatch } = context;
-  const { gitupper_id, bee_id, bee_submissions } = state.user;
+
+  const [buttonLoading, setButtonLoading] = useState({
+    download: false,
+    upload: state?.hasOngoingUpload ? true : false,
+  });
+
+  const { platforms_users, github_user, bee_submissions } = state.user;
+
+  const fetchIdRef = useRef(0);
+  const rowsPerPage = 30;
 
   async function handleOnDownloadSrcCode() {
     setButtonLoading({ ...buttonLoading, download: true });
@@ -45,7 +55,8 @@ export default function SubmissionsPanel({
     await context.DownloadSubmissions(
       submissions_ids,
       platform.platformPrefix,
-      state.user[platform.platformPrefix + "_id"]
+      state.user[platform.platformPrefix + "_id"],
+      selectAllChecked
     );
 
     setTimeout(() => {
@@ -54,60 +65,26 @@ export default function SubmissionsPanel({
   }
 
   async function handleOnUploadSrcCode() {
-    console.log(state.user);
-    if (!state.user.github_id) {
+    if (!github_user || !github_user?.github_id) {
       alert("You need to login with github to upload your code");
 
       return false;
     }
-
     uploadModal();
   }
-
-  function descendingComparator(a, b, orderBy) {
-    if (b[orderBy] < a[orderBy]) {
-      return -1;
-    }
-    if (b[orderBy] > a[orderBy]) {
-      return 1;
-    }
-    return 0;
-  }
-
-  function getComparator(order, orderBy) {
-    return order === "desc"
-      ? (a, b) => descendingComparator(a, b, orderBy)
-      : (a, b) => -descendingComparator(a, b, orderBy);
-  }
-
-  function stableSort(array, comparator) {
-    const stabilizedThis = array.map((el, index) => [el, index]);
-    stabilizedThis.sort((a, b) => {
-      const order = comparator(a[0], b[0]);
-      if (order !== 0) {
-        return order;
-      }
-      return a[1] - b[1];
-    });
-    return stabilizedThis.map((el) => el[0]);
-  }
-
-  const handleRequestSort = (event, property) => {
-    const isAsc = orderBy === property && order === "asc";
-    setOrder(isAsc ? "desc" : "asc");
-    setOrderBy(property);
-  };
 
   const handleSelectAllClick = (event) => {
     if (event.target.checked) {
       const newSelecteds = rows.map((row) => row);
 
       setSelected(newSelecteds);
+      setSelectAllChecked(true);
 
       return;
     }
 
     setSelected([]);
+    setSelectAllChecked(false);
   };
 
   const handleClick = (row) => {
@@ -130,14 +107,15 @@ export default function SubmissionsPanel({
     setSelected(newSelected);
   };
 
-  const handleChangePage = (event, newPage) => {
+  const handleChangePage = async (event, newPage) => {
+    setLoading(true);
     setPage(newPage);
   };
 
   const isSelected = (row) => selected.indexOf(row) !== -1;
 
   function defaultLabelDisplayedRows({ from, to, count }) {
-    return `${from}–${to} de ${count !== -1 ? count : `more than ${to}`}`;
+    return `${from}–${to} de ${count !== -1 ? count : `mais de ${to}`}`;
   }
 
   function defaultGetAriaLabel(type) {
@@ -153,33 +131,134 @@ export default function SubmissionsPanel({
     }
   }
 
+  async function handleOnSubmitSearchText(problem_name) {
+    setLoading(true);
+
+    const responseData = await context.GetPlatformSubmissions(
+      platform.name,
+      platform.platformId,
+      1,
+      100000,
+      problem_name
+    );
+
+    if (responseData) {
+      const submissions = responseData.results;
+
+      setRows(submissions);
+      setTotalRows(responseData.count);
+      setLoading(false);
+    } else {
+      setLoading(false);
+    }
+  }
+
+  const fetchAPIData = async () => {
+    try {
+      setLoading(true);
+
+      const responseData = await context.GetPlatformSubmissions(
+        platform.name,
+        platform.platformId,
+        page + 1,
+        rowsPerPage
+      );
+      console.log("Response Data", responseData);
+
+      if (responseData) {
+        const submissions = responseData.results;
+
+        setRows(submissions);
+        setTotalRows(responseData.count);
+        setLoading(false);
+      } else {
+        setLoading(false);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const platformChanged = useCallback(() => {
+    setPage(0);
+    setRows([]);
+    setTotalRows(0);
+    setSelected([]);
+    setSelectAllChecked(false);
+  }, [platform]);
+
   useEffect(() => {
-    setRows(submissions);
-  }, [submissions, platform]);
+    platformChanged();
+  }, [platformChanged]);
+
+  const fetchData = useCallback(
+    ({ page, rowsPerPage }) => {
+      setLoading(true);
+      const fetchId = ++fetchIdRef.current;
+
+      if (fetchId === fetchIdRef.current) {
+        fetchAPIData(page, rowsPerPage);
+      }
+    },
+    [page, platform]
+  );
+
+  useEffect(() => {
+    if (page > 0 && (!rows || rows?.length === 0)) {
+      setPage(0);
+    }
+  }, [rows]);
 
   return (
-    <div>
+    <Box>
       <ServicesModal
         headless
         ModalContent={UploadModal}
+        headerTitle={
+          <p>
+            <b>{selectAllChecked ? totalRows : selected.length}</b> submissões
+            selecionadas{" "}
+          </p>
+        }
         modalProps={{
-          categoryOptions,
-          dateOptions,
-          langOptions,
-          statusOptions,
           platformName: platform.name,
           platformPrefix: platform.platformPrefix,
-          platformId: state.user[`${platform.platformPrefix}_id`],
+          platformId: platform.platformId,
           selectedSubmissions: selected,
           columns: submissionsColumns,
+          selectAllChecked,
+          totalRows,
+          setButtonLoading,
         }}
         setModalFunction={(f) => {
           setUploadModal(f);
         }}
       />
 
+      <DashboardButtonsContainer
+        // visible={viewingSubmissions.submissions.length > 0}
+        visible={platform}
+      >
+        <Filter
+          columns={submissionsColumns}
+          filteringRows={rows}
+          setFilteredRows={setRows}
+          // filteringRows={viewingSubmissions.submissions}
+          // setFilteredRows={setRows}
+          // setSearchingValue={(value) => {
+          //   setSearchText(value);
+          // }}
+          // onSubmit={fetchData}
+          // searchValue={searchText}
+          handleOnSubmitSearchText={handleOnSubmitSearchText}
+          langOptions={langOptions}
+          // disabled={disabledInteractions()}
+          disabled={loading || buttonLoading.download || buttonLoading.upload}
+        />
+      </DashboardButtonsContainer>
+
       <CustomTableToolbar
-        numSelected={selected.length || 0}
+        numSelected={selectAllChecked ? totalRows : selected.length || 0}
         platformName={platform.name}
         buttonLoading={buttonLoading}
         handleOnDownloadSrcCode={handleOnDownloadSrcCode}
@@ -188,7 +267,7 @@ export default function SubmissionsPanel({
         <TablePagination
           rowsPerPageOptions={[]}
           component="div"
-          count={rows.length}
+          count={totalRows}
           rowsPerPage={rowsPerPage || -1}
           page={page}
           onPageChange={handleChangePage}
@@ -212,17 +291,17 @@ export default function SubmissionsPanel({
         rowsPerPage={rowsPerPage}
         page={page}
         maxHeight={maxHeight}
-        order={order}
-        orderBy={orderBy}
         handleClick={handleClick}
         handleSelectAllClick={handleSelectAllClick}
-        handleRequestSort={handleRequestSort}
-        searchingValue={searchText}
+        // searchingValue={searchText}
         isSelected={isSelected}
-        stableSort={stableSort}
-        getComparator={getComparator}
         getSelected={(selected) => setSelected(selected)}
+        fetchData={fetchData}
+        platform={platform}
+        setLoading={setLoading}
+        setTotalRows={setTotalRows}
+        GetPlatformSubmissions={context.GetPlatformSubmissions}
       />
-    </div>
+    </Box>
   );
 }

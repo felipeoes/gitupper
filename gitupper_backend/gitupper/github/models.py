@@ -1,14 +1,22 @@
 from django.db import models
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from gitupper.user.models import User
 
 from platforms.utils.commons import platforms
 
 
+class GithubUser(models.Model):
+    github_id = models.CharField(primary_key=True, max_length=100)
+    github_email = models.EmailField(max_length=100, unique=True)
+    github_access_token = models.CharField(max_length=100)
+
+    def __str__(self):
+        return str(self.github_id)
+
+
 class RepoEvent(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(GithubUser, on_delete=models.CASCADE)
     # associated_submissions = models.ManyToManyField(
     #     RepoSubmission, blank=True)
     message = models.TextField()
@@ -35,7 +43,7 @@ class RepoSubmission(models.Model):
 
 class RepoComment(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(GithubUser, on_delete=models.CASCADE)
     message = models.TextField()
     date_created = models.DateTimeField(auto_now_add=True)
     date_modified = models.DateTimeField(auto_now=True)
@@ -44,7 +52,7 @@ class RepoComment(models.Model):
 
 class RepoCommentReply(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(GithubUser, on_delete=models.CASCADE)
     message = models.TextField()
     date_created = models.DateTimeField(auto_now_add=True)
     date_modified = models.DateTimeField(auto_now=True)
@@ -53,7 +61,7 @@ class RepoCommentReply(models.Model):
 
 class RepoEventReaction(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(GithubUser, on_delete=models.CASCADE)
     reaction = models.CharField(max_length=20)
     date_created = models.DateTimeField(auto_now_add=True)
     date_modified = models.DateTimeField(auto_now=True)

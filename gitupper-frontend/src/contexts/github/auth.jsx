@@ -6,34 +6,11 @@ import api, {
   apiGithub,
   API_BASE_URL,
   API_AUTH_TOKEN_NAME,
+  getGithubToken,
   GITHUB_TOKEN_NAME,
-  updateApi,
 } from "../../services/api";
 
 import { currentPlatforms as platforms } from "../../services/utils/platforms";
-
-export function refactorUser(user) {
-  if (user["name"]) {
-    const names = user["name"].split(" ");
-    user["first_name"] = names[0];
-    user["last_name"] = names[1];
-  }
-
-  if (!user["profile_image"]) {
-    user["profile_image"] = user["avatar_url"];
-  } else if (!user["profile_image"].includes("http")) {
-    user["profile_image"] = API_BASE_URL + user["profile_image"];
-  }
-
-  return user;
-}
-
-export function setApiAuthToken(gitupper_token) {
-  localStorage.setItem(API_AUTH_TOKEN_NAME, gitupper_token);
-  updateApi(gitupper_token);
-
-  return gitupper_token;
-}
 
 async function getFileFromUrl(url, name, defaultType = "image/jpg") {
   const response = await fetch(url);
@@ -43,20 +20,22 @@ async function getFileFromUrl(url, name, defaultType = "image/jpg") {
   });
 }
 
-export async function GetPlatformSubmissions(platform, platform_id) {
+export async function GetPlatformSubmissions(
+  platform,
+  platform_id,
+  page,
+  limit,
+  problem_name
+) {
   try {
     const response = await api.get(
-      `/users/submissions/${platform}/${platform_id}/?limit=1000`,
-      {
-        headers: {
-          Authorization: `Token ${localStorage.getItem(API_AUTH_TOKEN_NAME)}`,
-        },
-      }
+      `/users/submissions/${platform}/${platform_id}/?page=${page}&limit=${limit}` +
+        (problem_name ? `&problem_name=${problem_name}` : "")
     );
 
-    if (response.status === 200 && response.data.results.length > 0) {
-      return response.data.results;
-    } else if (response.data.results.length === 0) {
+    if (response.status === 200 && response.data.results) {
+      return response.data;
+    } else if (!response.data.results) {
       return false;
     }
   } catch (error) {
@@ -81,28 +60,29 @@ export async function BindExistingSubmissions(user) {
   }
 }
 
-async function checkRegistered(user) {
-  let githubUser = user.data;
+async function checkRegistered(userData, gitupperUser) {
+  let githubUser = userData.user;
   const github_id = githubUser.id;
 
   try {
     const data = {
+      gitupper_id: gitupperUser?.gitupper_id, // send it to check if user is already registered and only need to bind github
+      github_email: githubUser.email,
       github_id: github_id,
-      token: user.token,
+      github_token: userData.github_token,
     };
 
     const response = await api.post("/verify/github", data);
 
     if (response.status === 200 && response.data.tokens) {
-      let gitupper_user = refactorUser(response.data.user);
+      console.log("response.data.user", response.data.user);
+      let gitupper_user = response.data.user;
       let tokens = response.data.tokens;
 
-      localStorage.setItem(API_AUTH_TOKEN_NAME, JSON.stringify(tokens));
-
       await BindExistingSubmissions(gitupper_user);
-      user.data = gitupper_user;
+      userData.user = gitupper_user;
 
-      return true;
+      return { registered: true, authTokens: tokens };
     } else if (response.data.error || response.data.results.length === 0) {
       return false;
     }
@@ -111,7 +91,7 @@ async function checkRegistered(user) {
   }
 }
 
-export async function LoginGithub(code) {
+export async function LoginGithub(code, gitupperUser) {
   const data = {
     code: code,
   };
@@ -128,29 +108,36 @@ export async function LoginGithub(code) {
         Authorization: `token ${token}`,
       },
     });
-    let user = {
-      data: res.data,
-      token: token,
+
+    let userData = {
+      user: res.data,
+      github_token: token,
     };
 
-    const registered = await checkRegistered(user);
+    const { registered, authTokens } = await checkRegistered(userData, gitupperUser);
+    console.log("Registered: ", registered, "AuthTokens: ", authTokens);
 
     if (!registered) {
-      let updatedUser = await RegisterGithubUser(user);
+      let updatedUser = await RegisterGithubUser(userData);
 
+      console.log("updatedUser", updatedUser);
       return updatedUser;
     }
 
-    return user;
+    // add auth tokens to user
+    userData["tokens"] = authTokens;
+
+    return userData;
   } catch (error) {
     console.log(error);
     return null;
   }
 }
 
-async function RegisterGithubUser(user) {
-  const githubUser = user.data;
+async function RegisterGithubUser(userData) {
+  const githubUser = userData.user;
 
+  // temporary
   const generateRandomPass = (
     passwordLength = 12,
     passwordChars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
@@ -178,19 +165,18 @@ async function RegisterGithubUser(user) {
 
   const response = await apiAuth.post(`/register/`, registerData);
 
-  if (response.data.access) {
-    const userDecoded = jwt_decode(response.data.access);
+  console.log("RegisterGithubUser response", response);
+  if (response.data.tokens.access) {
+    const responseUser = response.data.user;
 
-    // response.data.user.profile_image =
-    //   API_BASE_URL + response.data.user.profile_image;
-
-    user.data = refactorUser(userDecoded);
+    console.log("responseUser", responseUser);
+    userData.user = responseUser;
 
     localStorage.setItem(API_AUTH_TOKEN_NAME, JSON.stringify(response.data));
   } else {
     localStorage.clear();
   }
-  return user;
+  return userData;
 }
 
 const base64_arraybuffer = async (data) => {
@@ -203,23 +189,18 @@ const base64_arraybuffer = async (data) => {
   return base64url.split(",", 2)[1];
 };
 
-async function createGithubRepo(repoName) {
+async function createGithubRepo(repoName, about) {
   const data = {
     name: repoName,
-    description: "Gitupper Repository",
+    description: about || "Gitupper Repository",
     private: false,
     has_issues: true,
     has_projects: true,
     has_wiki: true,
   };
 
-  const token = localStorage.getItem(GITHUB_TOKEN_NAME).replace(/"/g, "");
   try {
-    const response = await apiGithub.post("user/repos", data, {
-      headers: {
-        Authorization: `token ${token}`,
-      },
-    });
+    const response = await apiGithub.post("user/repos", data, {});
 
     if (response.status === 201) {
       return response.data;
@@ -235,14 +216,8 @@ async function createGithubRepo(repoName) {
 }
 
 export async function GetUserRepos() {
-  const token = localStorage.getItem(GITHUB_TOKEN_NAME).replace(/"/g, "");
-
   try {
-    const user_res = await apiGithub.get("user", {
-      headers: {
-        Authorization: `token ${token}`,
-      },
-    });
+    const user_res = await apiGithub.get("user", {});
 
     const userlogin = user_res.data.login;
     const reposPerPage = 100;
@@ -251,12 +226,7 @@ export async function GetUserRepos() {
     let repos = [];
     while (true) {
       const response = await apiGithub.get(
-        `user/repos?per_page=${reposPerPage}&page=${page}`,
-        {
-          headers: {
-            Authorization: `token ${token}`,
-          },
-        }
+        `user/repos?per_page=${reposPerPage}&page=${page}`
       );
 
       repos = repos.concat(response.data);
@@ -382,16 +352,35 @@ const createCommit = async (
   }
 };
 
-export async function UploadSubmissions(uploadData) {
-  const repoName = uploadData.repoName;
+export async function CreateGithubRepo({ owner, repoName, about }) {
+  const created = await createGithubRepo(repoName, about);
 
-  await createGithubRepo(repoName);
+  if (created) {
+    console.log("Repositório criado com sucesso", created);
+    const repoLink = `https://github.com/${owner}/${repoName}`;
+    return repoLink;
+  }
 
-  const path = uploadData.path;
-  const owner = uploadData.owner;
-  const submissions = uploadData.submissions;
-  const token = localStorage.getItem(GITHUB_TOKEN_NAME).replace(/"/g, "");
-  const commitMessage = uploadData.commitMessage;
+  return false;
+}
+
+export async function UploadSubmissions({
+  repoName,
+  path,
+  owner,
+  submissions,
+  commitMessage,
+  token,
+}) {
+  // const repoName = uploadData.repoName;
+
+  // // await createGithubRepo(repoName);
+
+  // const path = uploadData.path;
+  // const owner = uploadData.owner;
+  // const submissions = uploadData.submissions;
+  // const token = getGithubToken().replace(/"/g, "");
+  // const commitMessage = uploadData.commitMessage;
 
   const created = await createCommit(
     owner,
@@ -402,10 +391,11 @@ export async function UploadSubmissions(uploadData) {
     token
   );
 
-  if (created) {
-    const repoLink = `https://github.com/${owner}/${repoName}`;
-    return repoLink;
-  }
+  if (created) return true;
+  // if (created) {
+  //   const repoLink = `https://github.com/${owner}/${repoName}`;
+  //   return repoLink;
+  // }
 
   return false;
 }

@@ -1,12 +1,14 @@
+from datetime import datetime
 from platforms.auth import Requester
 from gitupper.models import User as GitupperUser, BeeUser, HackerUser, LeetUser
 
 
 class BaseUser():
-    def __init__(self, email: str = None, name: str = None, active_session: Requester = None):
+    def __init__(self, email: str = None, name: str = None, active_session: Requester = None, token_expires: datetime = None):
         self.__email = email
         self.__name = name
         self.__active_session = active_session
+        self.__token_expires = token_expires
 
     @property
     def email(self):
@@ -20,10 +22,14 @@ class BaseUser():
     def active_session(self):
         return self.__active_session
 
+    @property
+    def token_expires(self):
+        return self.__token_expires
+
 
 class BeecrowdUser(BaseUser):
-    def __init__(self, bee_id: str, email: str = None, name: str = None, active_session: Requester = None, bee_submissions=None):
-        super().__init__(email, name, active_session)
+    def __init__(self, bee_id: str, email: str = None, name: str = None, active_session: Requester = None, token_expires: datetime = None, bee_submissions=None):
+        super().__init__(email, name, active_session, token_expires)
         self.__bee_id = bee_id
         self.__bee_submissions = bee_submissions
 
@@ -41,8 +47,8 @@ class BeecrowdUser(BaseUser):
 
 
 class HackerrankUser(BaseUser):
-    def __init__(self, hacker_id: str, email: str = None, name: str = None, active_session: Requester = None, hacker_submissions=None):
-        super().__init__(email, name, active_session)
+    def __init__(self, hacker_id: str, email: str = None, name: str = None, active_session: Requester = None, token_expires: datetime = None, hacker_submissions=None):
+        super().__init__(email, name, active_session, token_expires)
         self.__hacker_id = hacker_id
         self.__hacker_submissions = hacker_submissions
 
@@ -60,8 +66,8 @@ class HackerrankUser(BaseUser):
 
 
 class LeetcodeUser(BaseUser):
-    def __init__(self, leet_id: str, email: str = None, name: str = None, active_session: Requester = None, leet_submissions=None):
-        super().__init__(email, name, active_session)
+    def __init__(self, leet_id: str, email: str = None, name: str = None, active_session: Requester = None, token_expires: datetime = None, leet_submissions=None):
+        super().__init__(email, name, active_session, token_expires)
         self.__leet_id = leet_id
         self.__leet_submissions = leet_submissions
 
@@ -85,7 +91,7 @@ current_user_types = {
 }
 
 
-def create_user(user: object, gitupper_id: int, access_token: str = None):
+def create_user(user: object, gitupper_id: int, access_token: str = None, token_expires: datetime = None):
     for instance, value in current_user_types.items():
         if isinstance(user, instance):
             platform_prefix, platform_model = value
@@ -98,7 +104,7 @@ def create_user(user: object, gitupper_id: int, access_token: str = None):
                 gitupper_user = GitupperUser.objects.get(
                     gitupper_id=gitupper_id)
                 user = platform_model(gitupper_user=gitupper_user, **platform_field, first_name=gitupper_user.first_name or user.name,
-                                      last_name=gitupper_user.last_name or "", email=user.email, access_token=access_token)
+                                      last_name=gitupper_user.last_name or "", email=user.email, access_token=access_token, token_expires=token_expires)
                 setattr(gitupper_user, f"{platform_prefix}_id", platform_id)
 
                 user.save()

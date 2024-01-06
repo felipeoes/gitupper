@@ -12,7 +12,7 @@ export default function MyAccount() {
   const user = state.user;
 
   return (
-    <SubPageContainer>
+    <SubPageContainer id="my-account">
       <ItemTitle>Perfil</ItemTitle>
       <ProfileItem user={user} />
 

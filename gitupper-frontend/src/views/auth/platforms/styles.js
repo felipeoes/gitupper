@@ -13,7 +13,7 @@ export const Container = styled.div`
 
   // Desktop
   @media (min-width: 769px) {
-    width: ${(props) => props.width || 725}px;
+    width: ${(props) => props.width || "auto"};
   }
 
   border-radius: 4px;
@@ -26,7 +26,6 @@ export const BindMessage = styled.p`
   font-size: 16px;
   font-style: normal;
   font-weight: 400;
-  
 
   margin-top: ${(props) => props.marginTop || 8}px;
   margin-bottom: ${(props) => props.marginBottom || 8}px;
@@ -49,4 +48,9 @@ export const StyledALink = styled.a`
     opacity: 0.8;
   }
   margin: 0;
+  margin-top: ${(props) => props.marginTop || 0}px;
+
+  width: ${(props) => props.width || "fit-content"};
+  height: ${(props) => props.height || "fit-content"};
+  align-self: ${(props) => props.alignSelf || "center"};
 `;

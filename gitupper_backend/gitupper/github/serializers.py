@@ -1,7 +1,15 @@
 from rest_framework.serializers import ModelSerializer, ListSerializer, CharField, SerializerMethodField
 from rest_framework.authentication import BasicAuthentication, TokenAuthentication
 
-from .models import RepoComment, RepoCommentReply, RepoSubmission, RepoEvent, RepoEventReaction
+from .models import GithubUser, RepoComment, RepoCommentReply, RepoSubmission, RepoEvent, RepoEventReaction
+
+
+class GithubUsersSerializer(ModelSerializer):
+    authentication_classes = [BasicAuthentication, TokenAuthentication]
+    
+    class Meta:
+        model = GithubUser
+        fields = '__all__'
 
 
 class RepoCommentsSerializer(ModelSerializer):

@@ -1,7 +1,8 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useContext } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import AuthContext from "../contexts/auth";
+import { AuthContext } from "../contexts/index.js";
+
 import { paths } from "../services/utils/paths";
 
 //rotas não-autenticadas
@@ -20,11 +21,11 @@ import SettingsPage from "../views/auth/settingsPage/SettingsPage";
 import ResetPassword from "./../views/non-auth/reset-password/ResetPassword";
 import Repositories from "../views/auth/repositories/Repositories";
 
-const AppRoutes = () => {
+const AppRoutes = (props) => {
   const { state } = useContext(AuthContext);
 
   function RequireAuth({ children, redirectTo }) {
-    let isAuthenticated = state.isLoggedIn;
+    let isAuthenticated = state.user;
     return isAuthenticated ? children : <Navigate to={redirectTo} />;
   }
 

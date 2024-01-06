@@ -87,6 +87,7 @@ def format_submission(submission, platform_prefix: str):
             "date_submitted": submission.date_submitted.strftime('%d/%m/%Y'),
             "source_code": submission.source_code,
             "filename": submission.filename,
+            "user": submission.user,
         }
     elif platform_prefix == "hacker":
         submission_obj = {
@@ -101,6 +102,7 @@ def format_submission(submission, platform_prefix: str):
             "source_code": submission.source_code,
             "display_score": submission.display_score,
             "filename": submission.filename,
+            "user": submission.user,
         }
 
     elif platform_prefix == "leet":
@@ -114,6 +116,7 @@ def format_submission(submission, platform_prefix: str):
             "date_submitted": str(submission.date_submitted),
             "source_code": submission.source_code,
             "filename": submission.filename,
+            "user": submission.user,
         }
 
     return submission_obj
@@ -124,3 +127,8 @@ def response_json_parser(response):
         return json.loads(response.text)
     except:
         return None
+
+def error_msg(msg: str):
+    return {
+        "error": msg
+    }

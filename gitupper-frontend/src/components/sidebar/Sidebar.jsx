@@ -35,6 +35,10 @@ import { paths } from "./../../services/utils/paths";
 import SideBarLists from "./sidebarLists/sidebarLists";
 import JobsDrawer from "../jobsDrawer/JobsDrawer";
 
+import useWindowDimensions, {
+  totalHeaderHeight,
+} from "../../services/utils/useWindowsDimensions";
+
 const drawerWidth = 240;
 
 const openedMixin = (theme) => ({
@@ -112,6 +116,8 @@ export default function Sidebar(props) {
   const user = state.user;
 
   const RenderPage = props.RenderPage;
+  const { height } = useWindowDimensions();
+  const maxHeight = height - totalHeaderHeight;
 
   const handleDrawerOpen = () => {
     setOpen(true);
@@ -238,7 +244,13 @@ export default function Sidebar(props) {
 
       <Box
         component="main"
-        sx={{ height: "100%", flexGrow: 1, overflow: "hidden" }}
+        sx={{
+          // maxHeight: maxHeight,
+          flexGrow: 1,
+          overflow: "hidden",
+          width: "100%",
+          height: "100%",
+        }}
       >
         <DrawerHeader />
         {<RenderPage platform />}

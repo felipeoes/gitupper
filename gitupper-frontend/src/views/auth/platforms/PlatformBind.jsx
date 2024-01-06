@@ -1,6 +1,10 @@
 import { useContext, useState } from "react";
 import { useTheme } from "styled-components";
-import { AuthContext, NotificationsContext } from "../../../contexts/";
+import {
+  AuthContext,
+  NotificationsContext,
+  WorkersContext,
+} from "../../../contexts/";
 import {
   BindMessage,
   Container,
@@ -22,7 +26,8 @@ export default function PlatformBind(props) {
   const theme = useTheme();
   const context = useContext(AuthContext);
   const { stateNotif, dispatchNotif } = useContext(NotificationsContext);
-  const { state, dispatch } = context;
+  const { workerState, dispatchWorker } = useContext(WorkersContext);
+  const { state, dispatch, getJwtToken } = context;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -63,41 +68,41 @@ export default function PlatformBind(props) {
     }
   }
 
-  const subFetcherWorker = loadWorker(SubmissionsFetcherWorker);
+  // const subFetcherWorker = loadWorker(SubmissionsFetcherWorker);
 
-  subFetcherWorker.onmessage = function (message) {
-    console.log("Message from worker: ", message.data);
+  // subFetcherWorker.onmessage = function (message) {
+  //   console.log("Message from worker: ", message.data);
 
-    if (message.data.submissions) {
-      const user = state.user;
-      user[`${platformPrefix}_submissions`] = message.data.submissions;
+  //   if (message.data.submissions) {
+  //     const user = state.user;
+  //     user[`${platformPrefix}_submissions`] = message.data.submissions;
 
-      dispatch({
-        type: "LOGIN",
-        payload: {
-          user: user,
-          isLoggedIn: true,
-        },
-      });
+  //     dispatch({
+  //       type: "LOGIN",
+  //       payload: {
+  //         user: user,
+  //         isLoggedIn: true,
+  //       },
+  //     });
 
-      let notif = {
-        timestamp: new Date(),
-        title: "Submissões atualizadas",
-        content: (
-          <div>
-            <p>"Suas submissões foram atualizadas com sucesso."</p>
-          </div>
-        ),
-      };
+  //     let notif = {
+  //       timestamp: new Date(),
+  //       title: "Submissões atualizadas",
+  //       content: (
+  //         <div>
+  //           <p>"Suas submissões foram atualizadas com sucesso."</p>
+  //         </div>
+  //       ),
+  //     };
 
-      dispatchNotif({
-        type: "ADD_NOTIFICATION",
-        payload: {
-          notification: notif,
-        },
-      });
-    }
-  };
+  //     dispatchNotif({
+  //       type: "ADD_NOTIFICATION",
+  //       payload: {
+  //         notification: notif,
+  //       },
+  //     });
+  //   }
+  // };
 
   async function handleOnAuthenticateUser(userObj) {
     const response = await context.BindPlatform(userObj);
@@ -106,43 +111,54 @@ export default function PlatformBind(props) {
       return response;
     }
 
-    let user = state.user;
+    let newUserData = response.data;
+    console.log(newUserData);
+    // user[`${platformPrefix}_id`] = response.data[`${platformPrefix}_id`];
 
-    user[`${platformPrefix}_id`] = response.data[`${platformPrefix}_id`];
+    const token = getJwtToken();
 
-    // Faz uma  requisição qualquer para o backend para atualizar o token do usuário
-    await api.get("/users/");
+    // subFetcherWorker.postMessage({
+    //   // find the platform which has platformPrefix
+    //   platform: platformPrefix,
+    //   // Object.keys(platforms_obj).find(
+    //   //   (platform) =>
+    //   //     platforms_obj[platform]["platformPrefix"] === platformPrefix
+    //   // ),
+    //   platform_id: user[`${platformPrefix}_id`],
+    //   authToken: token,
+    //   fetchURL: api.defaults.baseURL + "/fetch/submissions/",
+    // });
 
-    //  RECUPERA TOKEN DO LOCAL STORAGE JÁ ATUALIZADO
-    const token = JSON.parse(localStorage.getItem(API_AUTH_TOKEN_NAME)).access;
+    // let notificationTemp = {
+    //   timestamp: new Date(),
+    //   title: "Vinculação de plataforma",
+    //   content: (
+    //     <div>
+    //       <p>Sua conta foi vinculada a {platformPrefix} com sucesso!</p>
+    //     </div>
+    //   ),
+    // };
 
-    subFetcherWorker.postMessage({
-      // find the platform which has platformPrefix
-      platform: platformPrefix,
-      // Object.keys(platforms_obj).find(
-      //   (platform) =>
-      //     platforms_obj[platform]["platformPrefix"] === platformPrefix
-      // ),
-      platform_id: user[`${platformPrefix}_id`],
-      authToken: token,
-    });
+    // dispatchNotif({
+    //   type: "ADD_NOTIFICATION",
+    //   payload: {
+    //     notification: notificationTemp,
+    //   },
+    // });
 
-    let notificationTemp = {
-      timestamp: new Date(),
-      title: "Vinculação de plataforma",
-      content: (
-        <div>
-          <p>Sua conta foi vinculada a {platformPrefix} com sucesso!</p>
-        </div>
-      ),
-    };
+    const platforms = {};
+    platforms[platformPrefix] = newUserData?.platforms_users[platformPrefix];
 
-    dispatchNotif({
-      type: "ADD_NOTIFICATION",
+    dispatchWorker({
+      type: "FETCH_SUBMISSIONS",
       payload: {
-        notification: notificationTemp,
+        platforms: platforms,
+        authToken: token,
       },
     });
+
+    // update old userData with new userData only the matching keys
+    const user = Object.assign(state.user, newUserData);
 
     dispatch({
       type: "LOGIN",
@@ -251,7 +267,7 @@ export default function PlatformBind(props) {
   }
 
   return (
-    <Container width={446}>
+    <Container>
       <PlatformLogo src={platformLogo} />
 
       <ElevatedButtons
@@ -316,12 +332,13 @@ export default function PlatformBind(props) {
             />
             <ErrorMessage error={errors.email || errors.password} />
 
-            <StyledALink href={platformResetPath} target="_blank">
-              <LoginOptionsText
-                color={platformColor}
-                textAlign="end"
-                marginTop={12}
-              >
+            <StyledALink
+              href={platformResetPath}
+              target="_blank"
+              marginTop={12}
+              alignSelf="end"
+            >
+              <LoginOptionsText color={platformColor} textAlign="end">
                 Esqueceu a senha?
               </LoginOptionsText>
             </StyledALink>
@@ -365,7 +382,6 @@ export default function PlatformBind(props) {
           type="submit"
           width={320}
           marginTop={16}
-          marginBottom={47}
           bgColor={platformColor}
           disabled={checkButtonDisabled(!firstButtonElevated) || loading}
           loading={loading}

@@ -4,35 +4,11 @@ import AuthContext from "../../../../contexts/auth";
 import BindView from "./bindView/BindView";
 import UploadView from "./uploadView/UploadView";
 
-export default function UploadModal({
-  columns,
-  categoryOptions,
-  dateOptions,
-  langOptions,
-  statusOptions,
-  platformName,
-  platformPrefix,
-  platformId,
-  selectedSubmissions,
-  setLoading,
-  handleOnClose,
-}) {
-  const { state } = useContext(AuthContext);
+export default function UploadModal(props) {
+  const { user } = useContext(AuthContext).state;
 
-  return state.user.github_id ? (
-    <UploadView
-      columns={columns}
-      categoryOptions={categoryOptions}
-      dateOptions={dateOptions}
-      langOptions={langOptions}
-      statusOptions={statusOptions}
-      platformName={platformName}
-      platformPrefix={platformPrefix}
-      platformId={platformId}
-      selectedSubmissions={selectedSubmissions}
-      keepMounted={setLoading}
-      handleOnClose={handleOnClose}
-    />
+  return user?.github_user?.github_id ? (
+    <UploadView {...props} />
   ) : (
     <BindView />
   );

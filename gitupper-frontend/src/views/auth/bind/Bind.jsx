@@ -40,6 +40,7 @@ export default function Bind(props) {
   const context = useContext(AuthContext);
   const { state } = context;
   const user = state.user;
+  const platforms_users = user?.platforms_users;
   const [beecrowdModal, setBeecrowdModal] = useState(null);
   const [hackerrankModal, setHackerrankModal] = useState(null);
   const [leetcodeModal, setLeetcodeModal] = useState(null);
@@ -54,31 +55,34 @@ export default function Bind(props) {
     leetcode: [leetcodeModal, setLeetcodeModal],
   };
 
+  function getPlatformID(platformName) {
+    const platformPrefix = currentPlatforms[platformName].platformPrefix;
+    if (!platforms_users.hasOwnProperty(platformPrefix)) return null;
+
+    return platforms_users[`${platformPrefix}`][`${platformPrefix}_id`];
+  }
+
   Object.keys(currentPlatforms).forEach((platform) => {
     currentPlatforms[platform].infos = {
       Nome: user.first_name + " " + user.last_name,
       Email: user.email,
-      ID: user[`${currentPlatforms[platform].platformPrefix}_id`],
+      ID: getPlatformID(platform),
     };
     currentPlatforms[platform].modalFunction = modalsMap[platform][0];
     currentPlatforms[platform].setModalFunction = modalsMap[platform][1];
   });
 
   function isUserBinded() {
-    return Object.keys(user).some(
-      (key) =>
-        !(key.includes("gitupper") || key.includes("github")) &&
-        key.includes("_id") &&
-        user[key] !== null
-    );
+    return Object.keys(platforms_users).length > 0;
   }
 
   function isUserBindedByPlatform(platformName) {
+    let platform = platformName.toLowerCase();
     const platformPrefix =
-      currentPlatforms[platformName] &&
-      currentPlatforms[platformName].platformPrefix;
+      currentPlatforms[platform] &&
+      currentPlatforms[platform].platformPrefix.toLowerCase();
 
-    return user[`${platformPrefix}_id`];
+    return Object.keys(platforms_users).includes(platformPrefix);
   }
 
   function handleOnOpenModal(platform) {
@@ -91,13 +95,13 @@ export default function Bind(props) {
   }
 
   async function handleOnUnbindPlatform(platformPrefix) {
+    console.log("Unbind platform: ", platformPrefix);
+    console.log("User", user);
     const response = await context.UnbindPlatform(user, platformPrefix);
+    console.log(response);
 
     if (!response.error) {
-      let updatedUser = user;
-      updatedUser[response.data.platformPrefix + "_id"] = null;
-      updatedUser[response.data.platformPrefix + "_submissions"] = null;
-
+      const updatedUser = response.data.user;
       setOpenSnackbar(true);
 
       context.dispatch({
@@ -130,7 +134,6 @@ export default function Bind(props) {
         }}
         url={currentPlatforms[platform].url}
         onClick={() => handleOnOpenModal(platform)}
-        disabled={isUserBindedByPlatform(platform)}
       >
         {isUserBindedByPlatform(platform) ? (
           <>

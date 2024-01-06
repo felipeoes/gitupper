@@ -3,8 +3,6 @@ import { styled as muiStyled } from "@mui/material/styles";
 
 export const ModalContainer = styled.div`
   display: ${(props) => (props.hidden ? "none" : "block")};
-  height: auto;
-  width: auto;
 
   border-radius: 8px;
   background-color: white;
@@ -23,14 +21,23 @@ export const ModalContainer = styled.div`
   transition: all ease 1s;
 
   background-color: ${(props) => props.bgColor || props.theme.colors.white};
+  margin: 0;
+  max-height: 90%;
+  padding-left: 24px;
+  padding-right: 24px;
+  padding-bottom: 12px;
 `;
 
 export const ModalHeader = styled.div`
   display: flex;
   align-items: center;
-  justify-content: right;
+  justify-content: ${(props) =>
+    props.headerTitle ? "space-between" : "flex-end"};
   width: 100%;
   margin-bottom: 0;
+  /* padding-left: 24px; */
+  /* padding-right: 14px; */
+  margin-top: 14px;
 `;
 
 export const ModalHeaderTabContainer = styled.div`
@@ -71,15 +78,21 @@ export const ModalHeaderTabDivider = styled.div`
 `;
 
 export const ModalTitle = styled.h1`
-  font-family: MontserratRegular;
-  color: #252733;
+  font-family: InterRegular;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 24px;
+  color: #464646;
   letter-spacing: 0.4px;
-  font-size: 19px;
   margin-top: 0.75rem;
 `;
 
 export const ModalContentContainer = styled.div`
   display: flex;
-  height: auto;
   margin: 0;
+
+  padding-bottom: 24px;
+  padding-left: 24px;
+  padding-right: 24px;
 `;

@@ -97,7 +97,7 @@ export default function Button({
       {Icon && (
         <Icon
           size={iconSize}
-          color={iconColor}
+          color={disabled ? "#000" : iconColor}
           style={{
             marginRight: iconMr,
             marginLeft: iconMl,
@@ -159,7 +159,7 @@ Button.propTypes = {
   marginBottom: PropTypes.number,
   fontWeight: PropTypes.string,
   fontFamily: PropTypes.string,
-  fontSize: PropTypes.string,
+  fontSize: PropTypes.string || PropTypes.number,
   iconSize: PropTypes.number,
   iconColor: PropTypes.string,
   onClick: PropTypes.func,

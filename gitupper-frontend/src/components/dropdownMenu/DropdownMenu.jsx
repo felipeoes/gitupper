@@ -30,6 +30,7 @@ export default function DropdownMenu({
   bgColor,
   buttonMl,
   buttonMr,
+  buttonMt,
   fontFamily,
   fontSize,
   fontWeight,
@@ -83,6 +84,7 @@ export default function DropdownMenu({
           bgColor={bgColor || theme.colors.white}
           marginLeft={buttonMl}
           marginRight={buttonMr}
+          marginTop={buttonMt}
         >
           {buttonText}
         </Button>

@@ -10,6 +10,10 @@ import { PlatformDetailsContainer } from "./../../../../../components/platformDe
 import AuthContext from "../../../../../contexts/auth";
 import { GithubOauthLink } from "../../../../non-auth/login/styles";
 import { Container, BindMessage } from "../../../platforms/styles";
+import {
+  getGithubUrlToken,
+  handleOnLoginGithub,
+} from "../../../../../services/utils/github/functions";
 
 export default function BindView() {
   const [loading, setLoading] = useState(false);
@@ -21,34 +25,11 @@ export default function BindView() {
   function handleOnClick() {}
 
   useEffect(() => {
-    async function handleOnLoginGithub(code) {
-      const response = await context.LoginGithub(code);
-
-      try {
-        dispatch({
-          type: "LOGIN",
-          payload: {
-            user: response.data,
-            isLoggedIn: true,
-            github_token: response.token,
-          },
-        });
-      } catch (error) {
-        console.log(error);
-      }
-    }
-
     const url = window.location.href;
-    const hasUserToken = url.includes("?code=");
+    const token = getGithubUrlToken(url);
 
-    if (hasUserToken) {
-      const newUrl = url.split("?code=");
-      window.history.pushState({}, null, newUrl[0]);
-      setLoading(true);
-
-      const code = newUrl[1];
-
-      handleOnLoginGithub(code);
+    if (token) {
+      handleOnLoginGithub(token, dispatch, context);
     }
   }, [dispatch, context]);
 

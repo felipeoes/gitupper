@@ -1,14 +1,13 @@
 import styled from "styled-components";
 
 export const Container = styled.div`
-  height: 195px;
   min-width: 443px;
 
   max-width: 524px;
 
   border-radius: 8px;
 
-  margin: 32px;
+  /* margin: 32px; */
   margin-bottom: 0;
 `;
 

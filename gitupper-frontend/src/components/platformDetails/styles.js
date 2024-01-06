@@ -5,7 +5,7 @@ export const Container = styled.div`
   flex-direction: column;
   align-items: ${(props) => props.alignItems || "center"};
 
-  width: ${(props) => props.width || 446}px;
+  width: ${(props) => props.width || "auto"}px;
 
   border-radius: 4px;
 

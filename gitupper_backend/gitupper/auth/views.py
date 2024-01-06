@@ -3,19 +3,42 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.permissions import AllowAny
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.utils.crypto import get_random_string
-
-from .serializers import LoginTokenObtainPairSerializer, UserRegistrationSerializer, ChangePasswordSerializer
-
 from gitupper.user.utils import make_user_obj
+
+from .serializers import (
+    LoginTokenObtainPairSerializer,
+    UserRegistrationSerializer,
+    ChangePasswordSerializer,
+)
+
 from gitupper.models import User
 from gitupper.mail_sender import send_mail
+from gitupper.user.serializers import UsersSerializer
 
-# User.objects.get(email="teste1@hotmail.com").delete()
+# User.objects.all().delete()
+
 
 class LoginTokenObtainPairView(TokenObtainPairView):
     serializer_class = LoginTokenObtainPairSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = User.objects.get(email=request.data.get("email"))
+
+        tokens = {
+            "access": serializer.validated_data["access"],
+            "refresh": serializer.validated_data["refresh"],
+        }
+
+        return Response(
+            {"tokens": tokens, "user": UsersSerializer(user).data},
+            status=status.HTTP_200_OK,
+        )
 
 
 class RegisterView(generics.CreateAPIView):
@@ -31,17 +54,45 @@ class RegisterView(generics.CreateAPIView):
         serializer.save(request)
 
         # make login after register
-        user = User.objects.get(email=request.data.get('email'))
+        user = User.objects.get(email=request.data.get("email"))
         login_serializer = LoginTokenObtainPairSerializer(
-            data={'email': user.email, 'password': request.data.get('password')})
+            data={"email": user.email, "password": request.data.get("password")}
+        )
         login_serializer.is_valid(raise_exception=True)
 
-        token = {
-            'access': login_serializer.validated_data['access'],
-            'refresh': login_serializer.validated_data['refresh'],
+        tokens = {
+            "access": login_serializer.validated_data["access"],
+            "refresh": login_serializer.validated_data["refresh"],
         }
 
-        return Response({'user': make_user_obj(user), 'token': token}, status=status.HTTP_201_CREATED)
+        response = Response(
+            {"user": UsersSerializer(user).data, "tokens": tokens},
+            status=status.HTTP_201_CREATED,
+        )
+
+        return response
+
+
+class LogoutView(APIView):
+    def post(self, request):
+        try:
+            refresh_token = request.data.get("refresh_token")
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+
+            # remove all jwt tokens from the authenticated user
+            # user = request.user
+
+            return Response(status=status.HTTP_205_RESET_CONTENT)
+        except Exception as e:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class RefreshTokenView(TokenRefreshView):
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+
+        return response
 
 
 # Somente método PUT
@@ -51,6 +102,7 @@ class ChangePasswordView(generics.UpdateAPIView):
     """
     An endpoint for changing password.
     """
+
     serializer_class = ChangePasswordSerializer
     model = User
     permission_classes = (AllowAny,)  # ver se precisa mudar dps
@@ -64,26 +116,32 @@ class ChangePasswordView(generics.UpdateAPIView):
         serializer = self.get_serializer(data=request.data)
 
         is_authenticated = self.object.is_authenticated
-        verify_token = request.data.get('token') or self.object.verify_token
+        verify_token = request.data.get("token") or self.object.verify_token
 
         if serializer.is_valid() and is_authenticated:
             if not self.object.check_password(serializer.data.get("old_password")):
-                return Response({"old_password": ["Wrong password."]}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"old_password": ["Wrong password."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-            if serializer.data.get("new_password0") == serializer.data.get('old_password'):
+            if serializer.data.get("new_password0") == serializer.data.get(
+                "old_password"
+            ):
                 raise ValidationError(
-                    {'passwords': 'A nova senha não pode ser igual a antiga'})
+                    {"passwords": "A nova senha não pode ser igual a antiga"}
+                )
 
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         if not is_authenticated and not verify_token:
             raise ValidationError(
-                {'email': 'Usuário não está autenticado e nenhum token foi informado'})
+                {"email": "Usuário não está autenticado e nenhum token foi informado"}
+            )
 
-        if serializer.data.get("new_password0") != serializer.data.get('new_password1'):
-            raise ValidationError(
-                {'passwords': 'As senhas não são iguais'})
+        if serializer.data.get("new_password0") != serializer.data.get("new_password1"):
+            raise ValidationError({"passwords": "As senhas não são iguais"})
 
         try:
             user = User.objects.get(verify_token=verify_token)
@@ -92,9 +150,9 @@ class ChangePasswordView(generics.UpdateAPIView):
             user.save()
 
             response = {
-                'success': True,
-                'code': status.HTTP_200_OK,
-                'message': 'Senha atualizada com sucesso!',
+                "success": True,
+                "code": status.HTTP_200_OK,
+                "message": "Senha atualizada com sucesso!",
             }
 
             user.verify_token = None  # removendo o token já utilizado
@@ -102,8 +160,7 @@ class ChangePasswordView(generics.UpdateAPIView):
 
         except Exception as e:
             print(e)
-            raise ValidationError(
-                {'token': 'Token inválido'})
+            raise ValidationError({"token": "Token inválido"})
 
 
 # @api_view(['POST'])
@@ -153,12 +210,9 @@ class ResetPasswordView(APIView):
     """
 
     def post(self, request, *args, **kwargs):
-        email = request.data.get('email')
+        email = request.data.get("email")
 
-        errors = {
-            "email": True,
-            "error": "Email não informado!"
-        }
+        errors = {"email": True, "error": "Email não informado!"}
 
         if not email:
             return Response(errors, status=status.HTTP_400_BAD_REQUEST)
@@ -171,23 +225,25 @@ class ResetPasswordView(APIView):
             user.verify_token = verify_token
             user.save()
 
-            send_mail(token=verify_token, text='Here is your password reset token',
-                      subject='password reset token', from_email='', to_emails=[email])
+            send_mail(
+                token=verify_token,
+                text="Here is your password reset token",
+                subject="password reset token",
+                from_email="",
+                to_emails=[email],
+            )
 
             response = {
                 "title": "Email enviado com sucesso!",
                 "status": "success",
-                "message": "Enviamos um código para o email informado. Insira o código recebido no campo abaixo para recuperar sua senha!"
+                "message": "Enviamos um código para o email informado. Insira o código recebido no campo abaixo para recuperar sua senha!",
             }
 
             return Response(response)
 
         except Exception as e:
             print(e)
-            errors = {
-                "email": True,
-                "error": "Email não encontrado!"
-            }
+            errors = {"email": True, "error": "Email não encontrado!"}
             return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -220,13 +276,14 @@ class ResetPasswordView(APIView):
 #         }
 #         return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class ValidateResetView(APIView):
     """
     An endpoint for validate reset password.
     """
 
     def post(self, request, *args, **kwargs):
-        token_received = request.data.get('token')
+        token_received = request.data.get("token")
 
         try:
             user = User.objects.get(verify_token=token_received)
@@ -246,8 +303,5 @@ class ValidateResetView(APIView):
         except Exception as e:
             print(e)
 
-            errors = {
-                "token": True,
-                "error": "Token inválido!"
-            }
+            errors = {"token": True, "error": "Token inválido!"}
             return Response(errors, status=status.HTTP_400_BAD_REQUEST)

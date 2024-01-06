@@ -1,20 +1,65 @@
 import re
 from threading import Thread
 from datetime import datetime
-from gitupper.models import BeeSubmission, LeetSubmission, HackerSubmission
+from gitupper.models import BeeSubmission, LeetSubmission, HackerSubmission, SubmissionTracker
+
+TARGET_DATETIME_FORMAT = "%d/%m/%Y %H:%M:%S"
 
 
-def format_datetime(string: str):
-    pattern_BR = "%d/%m/%Y"
-    pattern_US = "%m/%d/%y"
+def convert_datetime_pattern(input_datetime: str or int, target=TARGET_DATETIME_FORMAT) -> datetime:
+    # TARGET: "%d/%m/%Y %H:%M:%S""
+    # US: 1/2/23, 5:25 PM
+    # BR: 2/1/2023 17:25:00
 
-    string = re.sub('[,PAM]', '', string)
+    if isinstance(input_datetime, int):
+        # convert timestamp to datetime
+        return datetime.fromtimestamp(input_datetime)
+
+    us = re.search(
+        r'\d{1,2}/\d{1,2}/\d{2}, \d{1,2}:\d{1,2} [AP]M', input_datetime)
+    br = re.search(
+        r'\d{1,2}/\d{1,2}/\d{4} \d{1,2}:\d{1,2}:\d{1,2}', input_datetime)
+
+    if us:
+        return datetime.strptime(us.group(), "%m/%d/%y, %I:%M %p")
+    elif br:
+        return datetime.strptime(br.group(), "%d/%m/%Y %H:%M:%S")
+    else:
+        return datetime.strptime(input_datetime, target)
+
+
+def format_datetime(datetime: str or int) -> datetime:
+    """ Format datetime string or timestamp to datetime object """
     try:
-        return datetime.strptime(string, pattern_BR)
-    except Exception as e:
-        print(e)
-        # específico do beecrowd, removendo o espaço no final
-        return datetime.strptime(string, pattern_US)
+        return convert_datetime_pattern(datetime)
+    except:
+        return None
+
+
+def check_submissions_offset(gitupper_id, platform_prefix):
+    submission_tracker = SubmissionTracker.objects.filter(
+        gitupper_user_id=gitupper_id, platform_prefix=platform_prefix).first()
+
+    if submission_tracker:
+        return submission_tracker.content_object.id, submission_tracker.content_object.date_submitted
+    else:
+        return 0, None
+
+
+def save_submissions_offset(gitupper_id, platform_prefix, last_submission):
+    submission_tracker = SubmissionTracker.objects.filter(
+        gitupper_user_id=gitupper_id, platform_prefix=platform_prefix).first()
+
+    if submission_tracker:
+        submission_tracker.content_object = last_submission
+        submission_tracker.save()
+    else:
+        submission_tracker = SubmissionTracker(
+            gitupper_user_id=gitupper_id,
+            platform_prefix=platform_prefix,
+            content_object=last_submission,
+        )
+        submission_tracker.save()
 
 
 class BackgroundSubmissionsSaver(Thread):
@@ -25,40 +70,20 @@ class BackgroundSubmissionsSaver(Thread):
 
         platform = f"{platform_prefix.capitalize()}Submission"
 
-        unique_submissions = [
-            dict(t) for t in {tuple(d.items()) for d in submissions_objs}]
-
         eval(platform).objects.bulk_create([eval(platform)(**{
             **submission_obj,
             "user": platform_user,
-            "date_submitted": format_datetime(submission_obj['date_submitted'].split(" ")[0]) if platform_prefix == "bee" else submission_obj['date_submitted']
-        }) for submission_obj in unique_submissions])
+            # "date_submitted": format_datetime(submission_obj['date_submitted']) if platform_prefix == "bee" else submission_obj['date_submitted']
+        }) for submission_obj in submissions_objs], ignore_conflicts=True)
 
-        # eval(platform).objects.bulk_create([eval(platform)(**{
-        #     "user": platform_user,
-        #     "id": submission_obj["id"],
-        #     "problem_number": submission_obj["problem_number"],
-        #     "problem_name": submission_obj["problem_name"],
-        #     "category": submission_obj["category"],
-        #     "status": submission_obj["status"],
-        #     "prog_language": submission_obj["prog_language"],
-        #     "time": submission_obj["time"],
-        #     "date_submitted": format_datetime(submission_obj['date_submitted'].split(" ")[0]) if platform_prefix.lower() == "bee" else submission_obj['date_submitted'],
-        #     "source_code": submission_obj["source_code"],
-        #     "filename": submission_obj["filename"]
-        # }) for submission_obj in unique_submissions])
+        # Save submissions offset. Get last by common attribute 'date_submitted' in submisions_objs list
+        last_submission = max(
+            submissions_objs, key=lambda x: x['date_submitted'])
 
-        # for submission_obj in submissions_objs:
-        #     if platform_prefix == "Bee":
-        #         formatted_date_submitted = format_datetime(
-        #             submission_obj['date_submitted'].split(" ")[0])
-
-        #         submission_obj["date_submitted"] = formatted_date_submitted
-
-        #     submission = globals()[f"{platform}"](
-        #         **submission_obj, user=platform_user)
-
-        #     submission.save()
+        serialized_submission = eval(
+            f"{platform_prefix.capitalize()}Submission")(**last_submission)
+        save_submissions_offset(
+            platform_user.gitupper_user.gitupper_id, platform_prefix, serialized_submission)
 
 
 def save_submissions(submissions_objs: list, platform_prefix: str, platform_user):

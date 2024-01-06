@@ -12,7 +12,7 @@ export const ProfileInfoContainer = styled.div`
   margin-left: 32px;
   margin-top: 23px;
   margin-bottom: 23px;
-  width: 100%;
+  width: "100%";
 `;
 
 export const ProfileNameContainer = styled.div`
@@ -35,11 +35,11 @@ export const ProfileName = styled.p`
 
 export const ProfileID = styled.p`
   font-style: normal;
-  font-weight: 600;
+  font-weight: 400;
   font-size: 16px;
-  line-height: 24px;
 
   margin: 0;
+  margin-top:-4px;
 
-  color: ${(props) => props.theme.colors.disabledButton};
+  color: ${(props) => props.theme.colors.iconColor};
 `;

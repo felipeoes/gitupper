@@ -1,12 +1,8 @@
-from channels.auth import AuthMiddlewareStack
-from channels.routing import ProtocolTypeRouter, URLRouter
-import chat.routing
+from django.urls import path, include
+from gitupper.consumers import TemporaryProgressConsumer
 
-application = ProtocolTypeRouter({
-    # (http->django views is added by default)
-    'websocket': AuthMiddlewareStack(
-        URLRouter(
-            chat.routing.websocket_urlpatterns
-        )
-    ),
-})
+# Here, "" is routing to the URL ChatConsumer which
+# will handle the chat functionality.
+websocket_urlpatterns = [
+    path("ws/progress/<int:gitupper_id>/", TemporaryProgressConsumer.as_asgi()),
+]

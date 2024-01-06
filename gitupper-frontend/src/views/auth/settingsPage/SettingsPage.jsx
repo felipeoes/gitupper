@@ -56,8 +56,8 @@ export default function SettingsPage() {
   const RenderPage = ActivePage;
 
   return (
-    <MainContainer>
-      <ViewContainer>
+    <MainContainer id="settings-main-container">
+      <ViewContainer id="settings-view-container">
         <MenuContainer>
           <MenuItemsContainer>
             {subpages.map((item, index) => (

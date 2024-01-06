@@ -3,7 +3,7 @@ SUBMISSIONS_LIMIT = 1000
 leetcode_base_url = "https://www.leetcode.com"
 leetcode_login_url = f"{leetcode_base_url}/accounts/login/?next=/profile/account/"
 leetcode_profile_url = f"{leetcode_base_url}/profile"
-leetcode_graphql_url = f"{leetcode_base_url}/graphql"
+leetcode_graphql_url = f"{leetcode_base_url}/graphql/"
 leetcode_submissions_url = f"{leetcode_base_url}/api/submissions"
 
 leetcode_domain = ".leetcode.com"
@@ -41,3 +41,4 @@ login_post_headers = {
     "sec-fetch-site": "same-origin",
     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36",
 }
+

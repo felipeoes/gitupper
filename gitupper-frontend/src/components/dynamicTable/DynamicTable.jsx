@@ -1,11 +1,8 @@
-import { Fragment, useMemo } from "react";
+import { Fragment, useEffect, useState} from "react";
 import { useTheme } from "styled-components";
 import Box from "@mui/material/Box";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
+import { Table, TableBody, TableCell } from "@mui/material";
 import TableContainer from "@mui/material/TableContainer";
-import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 import { CustomTableHead } from "./customTableHead/CustomTableHead";
 import SubmissionRow from "../submissionRow/SubmissionRow";
@@ -20,25 +17,56 @@ export default function DynamicTable({
   page,
   maxHeight,
   loading,
-  order,
-  orderBy,
   handleClick,
   handleSelectAllClick,
-  handleRequestSort,
   searchingValue,
   isSelected,
-  stableSort,
-  getComparator,
+  platform,
+  fetchData,
 }) {
+  // const [rows, setRows] = useState(newRows);
+  const [order, setOrder] = useState("desc");
+  const [orderBy, setOrderBy] = useState("id");
+
+  function descendingComparator(a, b, orderBy) {
+    if (b[orderBy] < a[orderBy]) {
+      return -1;
+    }
+    if (b[orderBy] > a[orderBy]) {
+      return 1;
+    }
+    return 0;
+  }
+
+  function getComparator(order, orderBy) {
+    return order === "desc"
+      ? (a, b) => descendingComparator(a, b, orderBy)
+      : (a, b) => -descendingComparator(a, b, orderBy);
+  }
+
+  function stableSort(array, comparator) {
+    const stabilizedThis = array.map((el, index) => [el, index]);
+    stabilizedThis.sort((a, b) => {
+      const order = comparator(a[0], b[0]);
+      if (order !== 0) {
+        return order;
+      }
+      return a[1] - b[1];
+    });
+    return stabilizedThis.map((el) => el[0]);
+  }
+
+  const handleRequestSort = (event, property) => {
+    const isAsc = orderBy === property && order === "asc";
+    setOrder(isAsc ? "desc" : "asc");
+    setOrderBy(property);
+  };
+
   const theme = useTheme();
 
-  const emptyRows = useMemo(() => {
-    return page > 0 ? Math.max(0, (1 + page) * rowsPerPage - rows.length) : 0;
-  }, [page, rowsPerPage, rows]);
-
-  const sortedRows = useMemo(() => {
-    return stableSort(rows, getComparator(order, orderBy));
-  }, [stableSort, rows, getComparator, order, orderBy]);
+  useEffect(() => {
+    fetchData && fetchData(page, rowsPerPage);
+  }, [fetchData, page, rowsPerPage, platform]);
 
   return (
     <Box
@@ -77,12 +105,10 @@ export default function DynamicTable({
                 orderBy={orderBy}
                 onSelectAllClick={handleSelectAllClick}
                 onRequestSort={handleRequestSort}
-                rowCount={rows.length}
+                rowCount={rows?.length}
               />
               <TableBody
                 sx={{
-                  // add margin to the top of the table
-
                   //hide row border
                   "&:last-child td, &:last-child th": {
                     border: 0,
@@ -94,39 +120,43 @@ export default function DynamicTable({
                   },
                 }}
               >
-                {sortedRows
-                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                  .map((row, index) => {
-                    const isItemSelected = isSelected(row);
-                    const labelId = `enhanced-table-checkbox-${index}`;
+                {rows?.length > 0 &&
+                  stableSort(rows, getComparator(order, orderBy))
+                    // .slice(
+                    //   page * rowsPerPage,
+                    //   page * rowsPerPage + rowsPerPage
+                    // )
+                    .map((row, index) => {
+                      const isItemSelected = isSelected(row);
+                      const labelId = `enhanced-table-checkbox-${index}`;
 
-                    return rows.length > 0 ? (
-                      <Fragment key={row.id}>
-                        <TableCell padding="checkbox" align="center">
-                          <Checkbox
-                            checked={isItemSelected}
-                            onChange={(event) => handleClick(row)}
+                      return rows.length > 0 ? (
+                        <Fragment key={row.id}>
+                          <TableCell padding="checkbox" align="center">
+                            <Checkbox
+                              checked={isItemSelected}
+                              onChange={(event) => handleClick(row)}
+                            />
+                          </TableCell>
+
+                          <SubmissionRow
+                            searchingValue={searchingValue}
+                            key={row.id + labelId}
+                            row={row}
+                            columns={columns}
+                            hover
+                            role="checkbox"
+                            ariaChecked={isItemSelected}
+                            tabIndex={-1}
+                            selected={isItemSelected}
+                            labelId={labelId}
                           />
-                        </TableCell>
-
-                        <SubmissionRow
-                          searchingValue={searchingValue}
-                          key={row.id + labelId}
-                          row={row}
-                          columns={columns}
-                          hover
-                          role="checkbox"
-                          ariaChecked={isItemSelected}
-                          tabIndex={-1}
-                          selected={isItemSelected}
-                          labelId={labelId}
-                        />
-                      </Fragment>
-                    ) : (
-                      <h1>Sem submissões na plataforma</h1>
-                    );
-                  })}
-                {emptyRows > 0 && (
+                        </Fragment>
+                      ) : (
+                        <h1>Sem submissões na plataforma</h1>
+                      );
+                    })}
+                {/* {emptyRows > 0 && (
                   <TableRow
                     style={{
                       height: 53 * emptyRows,
@@ -134,7 +164,7 @@ export default function DynamicTable({
                   >
                     <TableCell colSpan={6} />
                   </TableRow>
-                )}
+                )} */}
               </TableBody>
             </Table>
           </TableContainer>

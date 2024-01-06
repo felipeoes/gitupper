@@ -20,27 +20,6 @@ def valid_platform_prefix(platform_prefix: str):
         return False
     return True
 
-def bind_user(gitupper_id: int, platform_prefix: str,  platform_id):
-    try:
-        user = User.objects.get(gitupper_id=gitupper_id)
-        setattr(user, f"{platform_prefix}_id", platform_id)
-        user.save()
-        return user
-    except Exception as e:
-        print(e)
-        return False
-
-
-def unbind_user(gitupper_id: int, platform_prefix: str):
-    try:
-        user = User.objects.get(gitupper_id=gitupper_id)
-        setattr(user, f"{platform_prefix}_id", None)
-        user.save()
-        return user
-    except Exception as e:
-        print(e)
-        return False
-
 
 def delete_temp_progress(gitupper_id: int):
     try:
@@ -87,31 +66,32 @@ def zip_submissions(submissions: list, request_list, platform_dir, user_id):
     return response
 
 
-def get_existing_submissions(user: any, gitupper_user: User, platform_prefix: str):
-    platform = f"{platform_prefix.capitalize()}Submission"
-    platform_id = getattr(user, f"{platform_prefix}_id")
+# def get_existing_submissions(user: any, gitupper_user: User, platform_prefix: str):
+#     platform = f"{platform_prefix.capitalize()}Submission"
+#     platform_user = getattr(user, f"{platform_prefix}user")
 
-    existing_submissions = globals()[f"{platform}"].objects.filter(
-        user=platform_id)
+#     existing_submissions = globals()[f"{platform}"].objects.filter(
+#         user=platform_user)
 
-    if existing_submissions.count() > 0:
-        user_obj = make_user_obj(user, gitupper_user, True)
-        user_obj[f"{platform_prefix}_submissions"] = [format_submission(
-            submission, platform_prefix) for submission in existing_submissions]
-        return user_obj
-    return None
+#     if existing_submissions.count() > 0:
+#         # user_obj = make_user_obj(user, gitupper_user, True)
+#         user_obj = UsersSerializer(gitupper_user).data
+#         user_obj[f"{platform_prefix}_submissions"] = [format_submission(
+#             submission, platform_prefix) for submission in existing_submissions]
+#         return user_obj
+#     return None
 
 
-def check_existing_submissions(user, gitupper_user, platform_prefix=None):
-    if platform_prefix:
-        globals()[f"{platform_prefix}_submissions"] = get_existing_submissions(
-            user, gitupper_user, platform_prefix)
-        return globals()[f"{platform_prefix}_submissions"]
+# def check_existing_submissions(user, gitupper_user, platform_prefix=None):
+#     if platform_prefix:
+#         globals()[f"{platform_prefix}_submissions"] = get_existing_submissions(
+#             user, gitupper_user, platform_prefix)
+#         return globals()[f"{platform_prefix}_submissions"]
 
-    user_obj = user
+#     user_obj = user
 
-    for platform in platforms:
-        globals()[f"{platform}_submissions"] = get_existing_submissions(
-            user_obj, gitupper_user, platform)
+#     for platform in platforms:
+#         globals()[f"{platform}_submissions"] = get_existing_submissions(
+#             user_obj, gitupper_user, platform)
 
-    return user_obj
+#     return user_obj

@@ -27,14 +27,15 @@ export function Topbar({
   iconMarginLeft,
   disableElevation,
   onClickButton,
+  disabledButtons,
 }) {
   const context = useContext(AuthContext);
   const { state } = context;
   const theme = useTheme();
   const user = state.user;
 
-  function handleOnLogout() {
-    context.Logout();
+  async function handleOnLogout() {
+    await context.Logout();
   }
 
   return (
@@ -66,7 +67,7 @@ export function Topbar({
             )}
           </TopbarUserContainer>
 
-          <StyledLink to={toPath || ""}>
+          <StyledLink to={toPath || ""} disabled={disabledButtons}>
             <Button
               width={160}
               marginRight={96}
@@ -75,6 +76,7 @@ export function Topbar({
               color={theme.colors.primary}
               disableElevation
               onClick={onClickButton}
+              disabled={disabledButtons}
             >
               {topbarButtonText}
             </Button>

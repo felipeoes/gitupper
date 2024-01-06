@@ -17,6 +17,7 @@ import beecrowdLogo from "./../../assets/images/logos/logo_beecrowd.svg";
 import hackerrankCleanLogo from "./../../assets/images/logos/hackerrank_clean.svg";
 import hackerrankLogo from "./../../assets/images/logos/logo_hackerrank.svg";
 import leetcodeLogo from "./../../assets/images/logos/logo_leetcode.png";
+import leetcodeCleanLogo from "./../../assets/images/logos/leetcode_clean.png";
 
 export const currentPlatforms = {
   beecrowd: {
@@ -37,6 +38,7 @@ export const currentPlatforms = {
   leetcode: {
     platformPrefix: "leet",
     icon: leetcodeLogo,
+    cleanIcon: leetcodeCleanLogo,
     resetPath: paths.leetcodeReset,
     color: colors.leetcodePrimary,
   },

@@ -16,7 +16,6 @@ hackerrank_submissions_url = "{}/rest/contests/master/submissions".format(
     hackerrank_base_url)
 hackerrank_userdata_url = "{}/rest/data_archives/download".format(
     hackerrank_base_url)
-hackerrank_session_cookie_name = "_hrank_session"
 
 base_headers = {
     "sec-ch-ua": "' Not;A Brand';v='99', 'Google Chrome';v='97', 'Chromium';v='97'",

@@ -1,6 +1,9 @@
-from rest_framework.serializers import ModelSerializer
+from rest_framework.serializers import ModelSerializer, SerializerMethodField
 from rest_framework.permissions import IsAuthenticated
-from ..models import User
+
+from gitupper.serializers import BeeUsersSerializer, HackerUsersSerializer, LeetUsersSerializer, GithubUsersSerializer
+from ..models import User, BeeUser, HackerUser, LeetUser
+from platforms.utils.commons import platforms
 
 DEFAULT_USER_IMG = 'user_default.png'
 
@@ -11,14 +14,32 @@ def default_user_img(user):
     return False
 
 
+EXCLUDE_FIELDS = ['password', 'is_superuser', 'is_staff', 'is_active',
+                  'date_joined', 'last_login', 'groups', 'user_permissions', 'verify_token']
+
+
 class UsersSerializer(ModelSerializer):
     permission_classes = [IsAuthenticated]
 
-    def create(self, validated_data):
-        user = User.objects.create_user(**validated_data)
-        return user
+    github_user = GithubUsersSerializer(read_only=True)
+    platforms_users = SerializerMethodField()
+
+    def get_platforms_users(self, obj):
+        platforms_users = {}
+        for platform in platforms:
+            try:
+                platform_user = eval(
+                    f'{platform.capitalize()}User').objects.get(gitupper_user=obj)
+                platforms_users[platform] = eval(
+                    f'{platform.capitalize()}UsersSerializer')(platform_user).data
+            except Exception as e:
+                print(e)
+                pass
+
+        return platforms_users
 
     # if update profile_image, old one will be deleted
+
     def update(self, instance, validated_data):
         profile_image = validated_data.get('profile_image')
         if profile_image and not default_user_img(instance):
@@ -38,5 +59,5 @@ class UsersSerializer(ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['gitupper_id', 'email', 'first_name',
-                  'last_name', 'profile_image', 'bee_id', 'hacker_id', 'github_id']
+
+        exclude = EXCLUDE_FIELDS

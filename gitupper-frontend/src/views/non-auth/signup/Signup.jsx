@@ -86,7 +86,14 @@ export default function Signup() {
   checkLoginState(state);
 
   function checkButtonDisabled() {
-    const value = !email || !password1 || !password2 || !firstName || !lastName;
+    const value =
+      !email ||
+      !password1 ||
+      !password2 ||
+      !firstName ||
+      !lastName ||
+      loading ||
+      (errors && Object.values(errors).some((error) => error !== ""));
     return value;
   }
 
@@ -117,7 +124,6 @@ export default function Signup() {
     registerData.append("password2", password2);
     registerData.append("email", email);
     registerData.append("profile_image", "");
-    registerData.append("github_id", "");
 
     const response = await context.Register(registerData);
 
@@ -129,7 +135,7 @@ export default function Signup() {
         payload: {
           user: user,
           isLoggedIn: true,
-          gitupper_token: response.data.key,
+          tokens: response.data.tokens,
         },
       });
     } else {
@@ -159,8 +165,47 @@ export default function Signup() {
     }
   }
 
+  function handleChangeInput(e) {
+    const { name, value } = e.target;
+    let error = "";
+
+    switch (name) {
+      case "email":
+        setEmail(value);
+        break;
+      case "password":
+        setPassword1(value);
+        break;
+      case "password2":
+        setPassword2(value);
+        break;
+      case "firstName":
+        setFirstName(value);
+        break;
+      case "lastName":
+        setLastName(value);
+        break;
+      default:
+        break;
+    }
+    console.log("name", name);
+    // erase errors on any input change
+    setErrors({ ...errors, [name]: error });
+  }
+
   return (
     <AuthContainer>
+      <StyledLink
+        to={paths.homepage}
+        style={{ display: "none" }}
+        id="styled-link-homepage"
+      />
+      <StyledLink
+        to={paths.bind}
+        style={{ display: "none" }}
+        id="styled-link-bind"
+      />
+
       <Topbar
         nonAuth
         topbarButtonText="Fazer login"
@@ -243,7 +288,8 @@ export default function Signup() {
               label="Email"
               value={email}
               required
-              onChange={(e) => setEmail(e.target.value)}
+              // onChange={(e) => setEmail(e.target.value)}
+              onChange={handleChangeInput}
               error={errors.email}
               disabled={disabledForm}
               borderColor={theme.colors.disabledButton}

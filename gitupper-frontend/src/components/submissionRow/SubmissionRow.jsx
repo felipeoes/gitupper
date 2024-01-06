@@ -11,38 +11,14 @@ const SubmissionRow = memo(
   ({
     columns,
     row,
-    selected,
-    role,
-    ariaChecked,
-    tabIndex,
-    hover,
     labelId,
-    onClick,
     searchingValue,
-    CheckboxComponent,
   }) => {
-    console.log("renderizando");
     const theme = useTheme();
     const [open, setOpen] = useState(false);
 
     function format_date(date) {
-      let d = "";
-      try {
-        const splittedDate = date.split("/");
-        const year = splittedDate[2].split(" ")[0];
-        d = new Date(year, splittedDate[1], splittedDate[0]);
-      } catch (error) {
-        // data está no formato US
-        const splittedDate = date.split("-");
-        const year = splittedDate[0];
-        d = new Date(year, splittedDate[1], splittedDate[2]);
-      }
-
-      return d.toLocaleString("pt-BR", {
-        day: "numeric",
-        month: "numeric",
-        year: "numeric",
-      });
+      return date;
     }
 
     function getHighlightedText(text, highlight) {

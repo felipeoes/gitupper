@@ -1,5 +1,5 @@
 import { useTheme } from "styled-components";
-import { BindSubtitle } from "../styles";
+import { BindSubtitle, BindTitle } from "../styles";
 import { Container, PlatformName, ButtonsContainer } from "./styles";
 import Button from "./../../../../components/button/Button";
 export default function UnbindModal(props) {
@@ -27,7 +27,7 @@ export default function UnbindModal(props) {
           bgColor="transparent"
           color={theme.colors.black}
           border
-          borderColor={props.platformColor}
+          borderColor={props.platformColor || theme.colors.black}
           onClick={props.onClick}
           width={256}
         >
@@ -35,7 +35,7 @@ export default function UnbindModal(props) {
         </Button>
         <Button
           type="button"
-          bgColor={props.platformColor}
+          bgColor={props.platformColor || theme.colors.black}
           width={256}
           onClick={props.handleOnClose}
         >

@@ -97,28 +97,11 @@ const ServicesModal = forwardRef((props, ref) => {
     >
       <Fade in={open} timeout={300}>
         <ModalContainer>
-          <ModalHeader>
-            <IconButton
-              onClick={handleClose}
-              style={{ marginRight: 14, marginTop: 14 }}
-            >
+          <ModalHeader headerTitle={props.headerTitle}>
+            {props.headerTitle && <ModalTitle>{props.headerTitle}</ModalTitle>}
+            <IconButton onClick={handleClose} sx={{ marginRight: -1 }}>
               <MdClose size={24} color={theme.colors.black60} />
             </IconButton>
-
-            {props.headerTitle && <ModalTitle>{props.headerTitle}</ModalTitle>}
-            {!headless &&
-              {
-                /* <ModalHeaderTabContainer>
-                <ModalHeaderTab>
-                  <ModalHeaderTabTitle>Informações</ModalHeaderTabTitle>
-              <ModalHeaderTabDivider />
-                </ModalHeaderTab>
-                <ModalHeaderTab>
-                  <ModalHeaderTabTitle>Informações</ModalHeaderTabTitle>
-                  <ModalHeaderTabDivider />
-                </ModalHeaderTab>
-              </ModalHeaderTabContainer> */
-              }}
           </ModalHeader>
           <ModalContentContainer>
             <ModalContent

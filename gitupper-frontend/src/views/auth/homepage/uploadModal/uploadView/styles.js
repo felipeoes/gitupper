@@ -4,8 +4,7 @@ export const UploadViewContainer = styled.div`
   display: flex;
   flex-direction: column;
   width: 100%;
-  padding-left: 32px;
-  padding-right: 32px;
+  height: 100%;
 `;
 
 export const TextFieldsContainer = styled.div`

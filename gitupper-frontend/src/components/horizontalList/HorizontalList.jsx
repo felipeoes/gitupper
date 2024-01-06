@@ -27,6 +27,7 @@ export default function HorizontalList({
   paddingRight,
   scrollWidth,
   firstItemMl,
+  disabled,
 }) {
   const { disableScroll, enableScroll } = usePreventBodyScroll();
   const itemsPrev = usePrevious(itemsList);
@@ -41,13 +42,14 @@ export default function HorizontalList({
     listProps && listProps.handleOnOpenUnbindModal;
 
   useEffect(() => {
-    if (itemsList.length > itemsPrev?.length) {
+    if (itemsList?.length > itemsPrev?.length) {
       apiRef.current?.scrollToItem?.(
         apiRef.current?.getItemElementById(itemsList.slice(-1)?.[0]?.id)
       );
     }
   }, [itemsPrev, itemsList]);
 
+  console.log("itemsList", itemsList);
   return (
     <ListContainer
       scrollWidth={scrollWidth}
@@ -56,8 +58,8 @@ export default function HorizontalList({
     >
       <div onMouseEnter={disableScroll} onMouseLeave={enableScroll}>
         <ScrollMenu
-          LeftArrow={<LeftArrow hasItem={itemsList.length > 0} />}
-          RightArrow={<RightArrow hasItem={itemsList.length > 0} />}
+          LeftArrow={<LeftArrow hasItem={itemsList?.length > 0 || Object.keys(itemsList).length > 0} />}
+          RightArrow={<RightArrow hasItem={itemsList?.length > 0 || Object.keys(itemsList).length > 0} />}
           onWheel={onWheel}
           apiRef={apiRef}
           wrapperClassName="scroll-menu-wrapper"

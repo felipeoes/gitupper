@@ -31,20 +31,20 @@ import FilesTreeView from "./../../../../../components/filesTreeView/FilesTreeVi
 import { MdSearch, MdCreateNewFolder, MdFolder } from "react-icons/md";
 import ServicesModal from "../../../../../components/modal/Modal";
 import NewRepoModal from "./newRepoModal/NewRepoModal";
+import { WorkersContext } from "../../../../../contexts";
 
 // import gitupperLogo from "../../../../../assets/images/logos/black_logo_GITUPPER.svg";
 
 export default function UploadView({
   columns,
-  categoryOptions,
-  langOptions,
-  statusOptions,
-  dateOptions,
   selectedSubmissions,
   platformName,
   platformId,
   keepMounted,
   handleOnClose, // closes the modal
+  selectAllChecked,
+  totalRows,
+  setButtonLoading,
 }) {
   columns = columns.filter((column) => column.icon); // filtrando somente as colunas que podem ser agrupadas
 
@@ -54,6 +54,7 @@ export default function UploadView({
   const [commitMessage, setCommitMessage] = useState(
     "Arquivos criados pelo gitupper <:)>"
   );
+  // const [selectedSubmissions, setSelectedSubmissions] = useState(selectedSubs);
   const [about, setAbout] = useState("");
   const [selectedGrouping, setSelectedGrouping] = useState(columns[0].label);
   const [openTooltip, setOpenTooltip] = useState(false);
@@ -67,27 +68,58 @@ export default function UploadView({
   const [newRepoModal, setNewRepoModal] = useState(false);
 
   const context = useContext(AuthContext);
-  const { dispatch } = context;
+  const workersContext = useContext(WorkersContext);
+
+  const { dispatch, state } = context;
+  const { workerState, dispatchWorker } = workersContext;
+
+  const { github_user } = state?.user;
   const theme = useTheme();
 
-  const groupingMap = {
-    Categoria: {
-      options: new Set(categoryOptions),
-      id: columns.filter((column) => column.label === "Categoria")[0].id,
-    },
-    Linguagem: {
-      options: new Set(langOptions),
-      id: columns.filter((column) => column.label === "Linguagem")[0].id,
-    },
-    Status: {
-      options: new Set(statusOptions),
-      id: columns.filter((column) => column.label === "Status")[0].id,
-    },
-    Data: {
-      options: new Set(dateOptions),
-      id: columns.filter((column) => column.label === "Data")[0].id,
-    },
+  const submissionsOptions = {
+    category: [],
+    date: [],
+    language: [],
+    status: [],
   };
+
+  function setUploadOptions() {
+    selectedSubmissions &&
+      selectedSubmissions.forEach((submission) => {
+        submissionsOptions.category.push(submission.category);
+        submissionsOptions.date.push(submission.date_submitted);
+        submissionsOptions.language.push(
+          submission.language || submission.prog_language
+        );
+        submissionsOptions.status.push(submission.status);
+      });
+  }
+
+  setUploadOptions();
+
+  function getGroupingMap() {
+    const groupingMap = {
+      Categoria: {
+        options: new Set(submissionsOptions.category),
+        id: columns.filter((column) => column.label === "Categoria")[0].id,
+      },
+      Linguagem: {
+        options: new Set(submissionsOptions.language),
+        id: columns.filter((column) => column.label === "Linguagem")[0].id,
+      },
+      Status: {
+        options: new Set(submissionsOptions.status),
+        id: columns.filter((column) => column.label === "Status")[0].id,
+      },
+      Data: {
+        options: new Set(submissionsOptions.date),
+        id: columns.filter((column) => column.label === "Data")[0].id,
+      },
+    };
+
+    return groupingMap;
+  }
+
   const handleCloseTooltip = () => {
     setOpenTooltip(false);
   };
@@ -98,6 +130,7 @@ export default function UploadView({
 
   function getFoldersOptions(grouping) {
     let currentGrouping = grouping || selectedGrouping;
+    const groupingMap = getGroupingMap();
     const { options } = groupingMap[currentGrouping];
     const optionsArray = Array.from(options);
 
@@ -118,16 +151,17 @@ export default function UploadView({
         ),
       });
     });
-
-    // setTreeData(treeData);
+    setTreeData(treeData);
 
     return treeData;
   }
 
   const handleChange = (event) => {
-    // setTreeData(getFoldersOptions());
+    setTreeData(getFoldersOptions());
     setSelectedGrouping(event.target.value);
-    // setTreeData(Array.from(groupingMap[event.target.value].options));
+    const groupingMap = getGroupingMap();
+
+    setTreeData(Array.from(groupingMap[event.target.value].options));
     setTreeData(getFoldersOptions(event.target.value));
   };
 
@@ -179,20 +213,34 @@ export default function UploadView({
   function createFoldersView() {
     let dateFlag = selectedGrouping === "Data";
 
+    const groupingMap = getGroupingMap();
     const { options, id } = groupingMap[selectedGrouping];
     const optionsArray = Array.from(options);
 
-    for (let option of optionsArray) {
-      const path = dateFlag
-        ? `${selectedGrouping}/${option.replaceAll("/", "-")}`
-        : `${selectedGrouping}/${option}`;
+    console.log("groupingMap: ", groupingMap);
+    console.log("selectedSubmissions: ", selectedSubmissions);
+    console.log("optionsArray: ", options);
+    console.log("id: ", id);
 
-      selectedSubmissions.forEach((submission) => {
-        if (submission[id] === option) {
-          submission.path = path;
-        }
-      });
-    }
+    selectedSubmissions.forEach((submission) => {
+      const path = dateFlag
+        ? `${selectedGrouping}/${submission[id].replaceAll("/", "-")}`
+        : `${selectedGrouping}/${submission[id]}`;
+
+      submission.path = path;
+    });
+
+    // for (let option of optionsArray) {
+    //   const path = dateFlag
+    //     ? `${selectedGrouping}/${option.replaceAll("/", "-")}`
+    //     : `${selectedGrouping}/${option}`;
+
+    //   selectedSubmissions.forEach((submission) => {
+    //     if (submission[id] === option) {
+    //       submission.path = path;
+    //     }
+    //   });
+    // }
 
     return optionsArray;
   }
@@ -201,25 +249,64 @@ export default function UploadView({
     setLoading(true);
     // keepMounted(true);
     // setLoadingData((prevState) => ({ ...prevState, message: true }));
+
+    if (selectAllChecked) {
+      // retrieve all submissions
+      const response = await context.GetPlatformSubmissions(
+        platformName,
+        platformId,
+        1,
+        10000
+      );
+      console.log(response);
+      selectedSubmissions = response.results;
+    }
+
+    setUploadOptions();
     createFoldersView();
 
+    const repoName = selectedRepo?.label || selectedRepo;
+
+    // create github repo if not exists
     const data = {
-      repoName: selectedRepo?.label || selectedRepo,
       owner: owner,
-      path: `${platformName}/${platformId}/aceitas`,
-      submissions: selectedSubmissions,
-      commitMessage: commitMessage,
+      repoName: repoName,
       about: about,
     };
 
-    handleOnClose();
-    const repoLink = await context.UploadSubmissions(data);
+    const repoLink = await context.CreateGithubRepo(data);
 
-    setTimeout(() => {
-      alert(
-        `Suas submissões já estão no Github! Link do repositório: ${repoLink}`
-      );
-    }, 2000);
+    if (repoLink) {
+      // upload submissions to github
+      const repoData = {
+        owner: owner,
+        repoName: repoName,
+        path: `${platformName}/${platformId}`,
+        submissions: selectedSubmissions,
+        commitMessage: commitMessage,
+        token: github_user?.github_access_token,
+      };
+
+      dispatchWorker({
+        type: "UPLOAD_SUBMISSIONS",
+        payload: {
+          ...repoData,
+          platformName,
+          setButtonLoading,
+        },
+      });
+    }
+
+    setButtonLoading((prevState) => ({ ...prevState, upload: true }));
+    handleOnClose();
+    // const repoLink = await context.UploadSubmissions(data);
+
+    console.log("repoLink: ", repoLink);
+    // setTimeout(() => {
+    //   alert(
+    //     `Suas submissões já estão no Github! Link do repositório: ${repoLink}`
+    //   );
+    // }, 2000);
 
     // initializeInterval();
 
@@ -260,7 +347,6 @@ export default function UploadView({
   return (
     <Container>
       <ServicesModal
-        headless
         ModalContent={NewRepoModal}
         setModalFunction={(f) => {
           setNewRepoModal(f);
@@ -271,13 +357,14 @@ export default function UploadView({
       />
 
       <UploadViewContainer>
-        <p
+        {/* <p
           style={{
             margin: 0,
           }}
         >
-          <b>{selectedSubmissions.length}</b> submissões selecionadas
-        </p>
+          <b>{selectAllChecked ? totalRows : selectedSubmissions.length}</b>{" "}
+          submissões selecionadas
+        </p> */}
         <BindMessage color={theme.colors.blackLight}>
           Buscar um repositório
         </BindMessage>
@@ -499,10 +586,9 @@ export default function UploadView({
         onClose={handleCloseTooltip}
         onOpen={handleOpenTooltip}
       >
-        <div
-          style={{
-            marginBottom: 42,
-            marginTop: 36,
+        <Box
+          sx={{
+            marginTop: 1,
           }}
         >
           <Button
@@ -515,9 +601,9 @@ export default function UploadView({
             loading={loading}
             disabled={disabledButton()}
           >
-            {loading ? `Aguarde...` : "Subir para o Github"}
+            {loading ? `Carregando...` : "Subir para o Github"}
           </Button>
-        </div>
+        </Box>
       </Tooltip>
     </Container>
   );

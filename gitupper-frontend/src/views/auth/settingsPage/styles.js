@@ -7,9 +7,8 @@ export const MainContainer = styled.div`
   background: ${(props) => props.theme.colors.white};
   width: 100%;
   height: 100%;
-
-  font-family: InterRegular;
-  overflow: hidden;
+  overflow: auto;
+  font-family: "InterRegular";
 `;
 
 export const SubPageContainer = styled.div`
@@ -18,7 +17,7 @@ export const SubPageContainer = styled.div`
   width: 100%;
 
   margin-left: 1.7rem;
-  height: "100%";
+  height: 100%;
   overflow: auto;
 `;
 
@@ -27,7 +26,7 @@ export const SubContainer = styled.div`
 
   align-items: center;
   justify-content: space-between;
-  width: "100%";
+  width: 100%;
 
   background-color: ${(props) => props.theme.colors.transparentIcon};
   border-radius: 4px;
@@ -38,8 +37,10 @@ export const ViewContainer = styled.div`
 
   background-color: ${(props) => props.theme.colors.white};
 
-  width: 80%;
+  width: 95%;
   margin-left: 52px;
+  overflow: auto;
+  height: 100%;
 `;
 
 export const MenuContainer = styled.div`
@@ -70,7 +71,7 @@ export const MenuItem = styled.li`
 
   height: 36px;
   cursor: pointer;
-  width: "100%";
+  width: 100%;
 
   font-family: ${(props) => (props.active ? "InterBold" : "InterRegular")};
   font-size: 14px;

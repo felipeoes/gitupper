@@ -13,35 +13,101 @@ export const REDIRECT_URI = process.env.REACT_APP_REDIRECT_URI;
 
 const GITHUB_API_BASE_URL = "https://api.github.com";
 
+export function getJwtToken() {
+  return sessionStorage.getItem(API_AUTH_TOKEN_NAME);
+}
+
+export function setJwtToken(token) {
+  sessionStorage.setItem(API_AUTH_TOKEN_NAME, token);
+}
+
+export function getRefreshToken() {
+  return sessionStorage.getItem("refreshToken");
+}
+
+export function setRefreshToken(token) {
+  sessionStorage.setItem("refreshToken", token);
+}
+
+export function getUser() {
+  return JSON.parse(sessionStorage.getItem("user"));
+}
+
+export function setUser(user) {
+  sessionStorage.setItem("user", JSON.stringify(user));
+}
+
+export function getGithubToken() {
+  return sessionStorage.getItem(GITHUB_TOKEN_NAME);
+}
+
+export function setGithubToken(token) {
+  sessionStorage.setItem(GITHUB_TOKEN_NAME, token);
+}
+
+export async function getAccessToken() {
+  const accessToken = getJwtToken();
+
+  if (accessToken) {
+    return accessToken;
+  }
+
+  // if there is refresh token in cookies, make a request to get access token
+  const refreshToken = getRefreshToken();
+
+  if (refreshToken) {
+    const response = await axios.post(
+      `${API_BASE_URL}/api/v1/users/auth/token/refresh/`,
+      {
+        refresh: refreshToken,
+      }
+    );
+
+    return response.data.access;
+  }
+
+  return null;
+}
+
+// const access_token = await getAccessToken();
+
+export const axiosConfig = {
+  baseURL: API_BASE_URL,
+  headers: {
+    Authorization: `Bearer ${getJwtToken()}`,
+  },
+};
+
+const axiosInstance = axios.create(axiosConfig);
+
 const useAxios = () => {
-  const authTokens = JSON.parse(localStorage.getItem(API_AUTH_TOKEN_NAME));
-
-  const axiosInstance = axios.create({
-    baseURL: API_BASE_URL,
-    headers: {
-      Authorization: `Bearer ${authTokens?.access}`,
-    },
-  });
-
   axiosInstance.interceptors.request.use(
     async (config) => {
-      if (!authTokens?.access) {
+      const accessToken = getJwtToken();
+
+      if (!accessToken) {
         return config;
       }
 
-      const user = jwt_decode(authTokens.access);
+      const user = jwt_decode(accessToken);
       const isExpired = dayjs.unix(user.exp).diff(dayjs()) < 1;
 
-      if (!isExpired) return config;
+      if (!isExpired) {
+        // update token in headers
+        config.headers.Authorization = `Bearer ${accessToken}`;
+
+        return config;
+      }
+
+      // get token from cookies
+      const refreshToken = getRefreshToken();
 
       const response = await axios.post(
         `${API_BASE_URL}/api/v1/users/auth/token/refresh/`,
         {
-          refresh: authTokens.refresh,
+          refresh: refreshToken,
         }
       );
-
-      localStorage.setItem(API_AUTH_TOKEN_NAME, JSON.stringify(response.data));
 
       config.headers.Authorization = `Bearer ${response.data.access}`;
       return config;
@@ -56,14 +122,14 @@ const useAxios = () => {
     (response) => {
       return response;
     },
-    (error) => {
+    async (error) => {
       // Check if refresh token is valid, otherwise logout user
       if (
         error.response &&
         error.response.status === 401 &&
         error.response.data.code === "token_not_valid"
       ) {
-        localStorage.clear();
+        sessionStorage.clear();
         window.location = "/";
         return error;
       } else return Promise.reject(error);
@@ -74,10 +140,8 @@ const useAxios = () => {
 
 const api = useAxios();
 
-export function updateApi(token) {
-  api.defaults.headers.common["Authorization"] = `Basic ${token}`;
-
-  return api;
+export function updateAxiosAuthHeader() {
+  api.defaults.headers.common["Authorization"] = `Bearer ${getJwtToken()}`;
 }
 
 export const apiAuth = axios.create({
@@ -86,6 +150,34 @@ export const apiAuth = axios.create({
 
 export const apiGithub = axios.create({
   baseURL: GITHUB_API_BASE_URL,
+  headers: {
+    Authorization: `token ${getGithubToken()}`,
+  },
 });
+
+apiGithub.interceptors.request.use(
+  async (config) => {
+    const githubToken = getGithubToken();
+
+    if (!githubToken) {
+      return config;
+    }
+
+    // update token in headers
+    config.headers.Authorization = `token ${githubToken}`;
+
+    return config;
+  },
+  (error) => {
+    console.log("interceptor request has error", error);
+    return Promise.reject(error);
+  }
+);
+
+export function updateapiGithubAuthHeader() {
+  apiGithub.defaults.headers.common[
+    "Authorization"
+  ] = `token ${getGithubToken()}`;
+}
 
 export default api;

@@ -44,4 +44,5 @@ export const AuthDataText = styled.p`
   line-height: 22px;
 
   margin: 0;
+  color: ${(props) => props.color || props.theme.colors.black};
 `;

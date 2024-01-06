@@ -43,8 +43,7 @@ export default function PlatformDetails({
         color={platformColor}
         fontFamily="InterMedium"
         fontWeight="500"
-        marginTop={32}
-        marginBottom={47}
+        marginTop={24}
         onClick={handleOnUnbindPlatform}
         loading={loading}
       >

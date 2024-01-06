@@ -1,3 +1,6 @@
+import { Box } from "@mui/material";
+import { styled as styledMUI } from "@mui/material/styles";
+
 import styled from "styled-components";
 
 export const Container = styled.div`
@@ -5,10 +8,10 @@ export const Container = styled.div`
   flex-direction: column;
 
   width: 100%;
-  height: 300px;
+  min-height: 40%;
 
-  padding-top: 57px;
-  padding-left: 83px;
+  padding-top: 32px;
+  padding-left: 32px;
 
   background-color: ${(props) => props.theme.colors.lightGreen};
 `;

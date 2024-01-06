@@ -29,7 +29,7 @@ export function CustomTableToolbar(props) {
   }
 
   function disabledUpload() {
-    return buttonLoading.upload || (state.user.github_id && numSelected === 0);
+    return buttonLoading.upload || numSelected === 0;
   }
 
   const handleCloseTooltip = () => {
@@ -111,8 +111,8 @@ export function CustomTableToolbar(props) {
           height={32}
           fontSize={14}
           onClick={handleOnUploadSrcCode}
-          disabled={disabledUpload()}
-          loading={buttonLoading.upload}
+          disabled={disabledUpload() || buttonLoading.upload}
+          // loading={buttonLoading.upload}
         >
           Subir para o Github
         </Button>

@@ -6,7 +6,7 @@ from platforms.auth import Authenticator
 from .config import *
 
 
-class BeecrowdAuthenticator(Authenticator):
+class BeeAuthenticator(Authenticator):
     def __init__(self, login: str = None, password: str = None, session_id: str = None, gitupper_id: int = None):
         super().__init__(login, password, session_id, gitupper_id)
         self.__html_parser = etree.HTMLParser()
@@ -57,18 +57,20 @@ class BeecrowdAuthenticator(Authenticator):
 
         return email, bee_id
 
-    def authenticate_user(self, email: str, bee_id: int, access_token: str):
-
-        user = BeecrowdUser(bee_id, email, active_session=self.req)
-
-        create_user(user, self.gitupper_id, access_token=access_token)
-
-        return user
-
     def get_url_content(self, url: str):
         response = self.req.make_request(url)
 
         return response
+
+    def authenticate_user(self, email: str, bee_id: int, access_token: str):
+
+        user = BeecrowdUser(bee_id, email, active_session=self.req)
+
+        create_user(user, self.gitupper_id, access_token=access_token,
+                    token_expires=self.get_session_cokie_expiration(
+                        self.get_expiration_cookie_name('bee')))
+
+        return user
 
     def authenticate(self):
         token_fields, csrfToken = self.get_tokens()
@@ -87,7 +89,8 @@ class BeecrowdAuthenticator(Authenticator):
             "https://www.beecrowd.com.br/judge/pt/login", data=body)
 
         if response is not None and self.req.status_code == 200:
-            access_token = self.req.get_cookie_dict()['judge']
+            access_token = self.get_session_cookie(
+                self.get_session_cookie_name('bee'))
             email, bee_id = self.get_bee_info(response)
 
             user = self.authenticate_user(
@@ -97,13 +100,19 @@ class BeecrowdAuthenticator(Authenticator):
         return None
 
     def authenticate_session(self):
-        cookie = PLATFORM_COOKIES['bee']
+        cookie = self.get_platform_cookie('bee')
         cookie.update({'value': self.session_id})
         cookie = self.req.cookie_dict_to_cookie(cookie)
         self.req.set_cookie(cookie)
 
         response = self.get_url_content(beecrowd_dashboard_url)
-        email, bee_id = self.get_bee_info(response)
+
+        try:
+            email, bee_id = self.get_bee_info(response)
+        except:
+            # Token expired
+            self.notify_token_expired('bee')
+            return None
 
         user = self.authenticate_user(
             email, bee_id, self.session_id)
