@@ -9,12 +9,15 @@ def retrieve_leetcode_session(driver: Chrome, login, password):
 
     time.sleep(3)
 
+    
+        
     input_email = driver.find_element('xpath',
-                                      "/html/body/div[1]/div/div[2]/div/div[2]/div/div/div/form/span[1]/input")
+                                      "/html/body/div[1]/div/div[3]/div/div[2]/div/div/div/form/span[1]/input")
+                                     
     input_pass = driver.find_element('xpath',
-                                     "/html/body/div[1]/div/div[2]/div/div[2]/div/div/div/form/span[2]/input")
+                                     "/html/body/div[1]/div/div[3]/div/div[2]/div/div/div/form/span[2]/input")
     btn_login = driver.find_element('xpath',
-                                    "/html/body/div[1]/div/div[2]/div/div[2]/div/div/div/button")
+                                    "/html/body/div[1]/div/div[3]/div/div[2]/div/div/div/button")
 
     input_email.send_keys(login)
     input_pass.send_keys(password)
