@@ -11,13 +11,15 @@ from platforms.user import HackerrankUser
 from .config import *
 from datetime import datetime
 
+from .auth import Authenticator
+
 
 # Since this class implements BaseSubmissionsFetcher, it will need to implement fetch_submissions method.
 # BaseSubmissionsFetcher has a get_submissions method that will call fetch_submissions and return the result.
 
 class HackerSubmissionsFetcher(BaseSubmissionsFetcher):
-    def __init__(self, user: HackerrankUser, gitupper_id: str, options: dict = {}):
-        super().__init__(user, gitupper_id, options)
+    def __init__(self, user: HackerrankUser, gitupper_id: str, authenticator: Authenticator, options: dict = {}):
+        super().__init__(user, gitupper_id, authenticator, options)
         self.__session: HTMLSession = user.active_session
         self.fetch_until = SUBMISSIONS_LIMIT
         self.total_submissions = 0

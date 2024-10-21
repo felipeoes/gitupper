@@ -23,7 +23,7 @@ class CloseDriverThread(Thread):
 class SeleniumHelper:
     def __init__(self, retrieve_session):
         self.retrieve_session = retrieve_session
-        self.driver = webdriver.Chrome(ChromeDriverManager().install())
+        self.driver = webdriver.Chrome()
         self.close_driver_thread = CloseDriverThread(self.driver)
 
     def get_driver(self):

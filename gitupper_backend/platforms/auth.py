@@ -84,6 +84,7 @@ class Authenticator(ABC):
         for cookie in cookies:
             cookie_string += f'{cookie.name}={cookie.value};'
         return cookie_string
+    
     def get_session_cokie_expiration(self, cookie_name: str):
         cookies = self.req.get_cookie_dict()
 

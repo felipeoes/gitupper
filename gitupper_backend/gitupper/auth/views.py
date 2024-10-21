@@ -1,5 +1,8 @@
+import json
+
 from rest_framework import status, generics
 from rest_framework.views import APIView
+from rest_framework.viewsets import ViewSet
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.permissions import AllowAny
@@ -14,12 +17,9 @@ from .serializers import (
     ChangePasswordSerializer,
 )
 
-from gitupper.models import User
+from gitupper.models import User, GithubUser
 from gitupper.mail_sender import send_mail
 from gitupper.user.serializers import UsersSerializer
-
-# User.objects.all().delete()
-
 
 class LoginTokenObtainPairView(TokenObtainPairView):
     serializer_class = LoginTokenObtainPairSerializer
@@ -50,8 +50,30 @@ class RegisterView(generics.CreateAPIView):
 
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save(request)
+        
+        # check if any field in serializer is a json string and convert it to a dict
+        for key in serializer.initial_data:
+            value = serializer.initial_data[key]
+            if isinstance(value, str) and value.startswith("{") and value.endswith("}"):
+                serializer.initial_data[key] = json.loads(value, strict=False)
+                
+        # if github_user is present, transform it to GithubUser object if not already
+        github_user = serializer.initial_data.get("github_user")
+        if github_user and not isinstance(github_user, GithubUser):
+            serializer.initial_data["github_user"] = GithubUser(**github_user)
+            serializer.initial_data["github_user"].save()
+            
+        try:
+            serializer.is_valid(raise_exception=True)
+            serializer.save(request)
+        except Exception as e:
+            print(e)
+            
+            # undo the creation of the github_user object if it was created
+            github_user = serializer.initial_data.get("github_user")
+            github_user.delete()
+            
+            raise e
 
         # make login after register
         user = User.objects.get(email=request.data.get("email"))
@@ -161,48 +183,6 @@ class ChangePasswordView(generics.UpdateAPIView):
         except Exception as e:
             print(e)
             raise ValidationError({"token": "Token inválido"})
-
-
-# @api_view(['POST'])
-# @permission_classes([AllowAny, ])
-# def reset_password_view(request):
-#     email = request.data.get('email')
-
-#     errors = {
-#         "email": True,
-#         "error": "Email não informado!"
-#     }
-
-#     if not email:
-#         return Response(errors, status=status.HTTP_400_BAD_REQUEST)
-
-#     verify_token = get_random_string(length=6).upper()
-
-#     # Verificando se o email existe
-#     try:
-#         user = User.objects.get(email=email)
-#         user.verify_token = verify_token
-#         user.save()
-
-#         send_mail(token=verify_token, text='Here is your password reset token',
-#                   subject='password reset token', from_email='', to_emails=[email])
-
-#         response = {
-#             "title": "Email enviado com sucesso!",
-#             "status": "success",
-#             "message": "Enviamos um código para o email informado. Insira o código recebido no campo abaixo para recuperar sua senha!"
-#         }
-
-#         return Response(response)
-
-#     except Exception as e:
-#         print(e)
-#         errors = {
-#             "email": True,
-#             "error": "Email não encontrado!"
-#         }
-#         return Response(errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class ResetPasswordView(APIView):
     """

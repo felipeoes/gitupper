@@ -55,9 +55,9 @@ class GithubOauthView(generics.GenericAPIView):
         }
 
         data = {
-            "client_id": os.getenv("CLIENT_ID"),
-            "client_secret": os.getenv("CLIENT_SECRET"),
-            "redirect_uri": os.getenv("REDIRECT_URI"),
+            "client_id": os.getenv("GITHUB_CLIENT_ID"),
+            "client_secret": os.getenv("GITHUB_CLIENT_SECRET"),
+            "redirect_uri": os.getenv("GITHUB_REDIRECT_URI"),
             "code": request.data["code"],
         }
 

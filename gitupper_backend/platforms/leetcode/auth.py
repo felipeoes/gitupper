@@ -18,11 +18,11 @@ class LeetAuthenticator(Authenticator):
         req: Requester = super().req
         return req
 
-    def query_graphql(self, operation_name: str, query: str, session: HTMLSession):
+    def query_graphql(self, operation_name: str, query: str, session: HTMLSession, variables: dict = None):
         url = "https://leetcode.com/graphql/"
         data = {'operationName': operation_name,
                 'query': query,
-                'variables': {}
+                'variables': variables
                 }
         json_data = json.dumps(data)
         headers = {

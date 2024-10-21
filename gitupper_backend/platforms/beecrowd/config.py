@@ -1,6 +1,6 @@
 from fake_useragent import UserAgent
 
-beecrowd_base_url = "https://www.beecrowd.com.br"
+beecrowd_base_url = "https://judge.beecrowd.com/en"
 beecrowd_login_url = "{}/judge/pt/login".format(beecrowd_base_url)
 beecrowd_dashboard_url = "{}/judge/pt/".format(beecrowd_base_url)
 beecrowd_submissions_url = "{}/judge/runs".format(beecrowd_base_url)
@@ -29,8 +29,8 @@ login_post_headers = {
     "cache-control": "max-age=0",
     "content-length": "296",
     "content-type": "application/x-www-form-urlencoded",
-    "origin": "https://www.beecrowd.com.br",
-    "referer": "https://www.beecrowd.com.br/judge/pt/login",
+    "origin": "https://judge.beecrowd.com",
+    "referer": "https://judge.beecrowd.com/judge/pt/login",
     "sec-ch-ua": " 'Not;A Brand';v='99', 'Google Chrome';v='97', 'Chromium';v='97'",
     "sec-ch-ua-mobile": "?0",
     "sec-ch-ua-platform": "Windows",

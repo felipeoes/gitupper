@@ -351,12 +351,7 @@ class PlatformBindView(APIView):
         if not is_binded:
             self.bind_user(request.user, platform_prefix)
 
-        # user_obj = check_existing_submissions(
-        #     platform_user, gitupper_user, platform_prefix)
-
         user_obj = UsersSerializer(user).data
-        # user_obj = make_user_obj(platform_user, gitupper_user, platform=True)
-
         return Response(user_obj)
 
 

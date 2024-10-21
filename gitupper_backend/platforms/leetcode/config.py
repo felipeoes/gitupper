@@ -1,6 +1,6 @@
 SUBMISSIONS_LIMIT = 1000
 
-leetcode_base_url = "https://www.leetcode.com"
+leetcode_base_url = "https://leetcode.com"
 leetcode_login_url = f"{leetcode_base_url}/accounts/login/?next=/profile/account/"
 leetcode_profile_url = f"{leetcode_base_url}/profile"
 leetcode_graphql_url = f"{leetcode_base_url}/graphql/"

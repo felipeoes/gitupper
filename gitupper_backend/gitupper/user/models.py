@@ -10,7 +10,7 @@ def get_images_directory(instance, filename):
 
 
 class UserAdmin(BaseUserManager):
-    def create_user(self, gitupper_id: int, email: str, password: str, first_name: str, last_name: str, github_user: GithubUser = None, profile_image=None):
+    def create_user(self, gitupper_id: int, email: str, password: str, first_name: str, last_name: str, github_user: GithubUser = None, profile_image=None) -> 'UserAdmin':
         user = self.model(
             gitupper_id=gitupper_id,
             email=self.normalize_email(email),
