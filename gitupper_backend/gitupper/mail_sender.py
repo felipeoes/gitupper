@@ -1,7 +1,7 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import environ
+import environ # type: ignore
 import os
 
 env = environ.Env()

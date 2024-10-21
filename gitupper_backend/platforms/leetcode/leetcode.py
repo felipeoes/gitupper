@@ -15,7 +15,7 @@ def get_leet_submissions(user: User,  gitupper_id: int = None, options: dict = N
     if not leet_user:
         return error_msg("Token inválido")
 
-    fetcher = LeetSubmissionsFetcher(leet_user, gitupper_id, options)
+    fetcher = LeetSubmissionsFetcher(leet_user, gitupper_id=gitupper_id, authenticator=auth, options=options)
     try:
         submissions = fetcher.get_submissions()
 

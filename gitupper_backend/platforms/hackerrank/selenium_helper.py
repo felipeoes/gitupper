@@ -21,11 +21,11 @@ def retrieve_hrank_session(driver: Chrome, login, password):
     driver.get(hackerrank_selenium_login_url)
 
     input_email = driver.find_element('xpath',
-                                      "/html/body/div[4]/div/div/div/div[2]/div[2]/div/div/div[2]/div/div/div[2]/div[1]/form/div[1]/div/div/div/input")
+                                      "/html/body/div[4]/div/div/div/div[2]/div[2]/div/div[2]/div/div/div[1]/div/form/div[1]/div/div/input")
     input_pass = driver.find_element('xpath',
-                                     "/html/body/div[4]/div/div/div/div[2]/div[2]/div/div/div[2]/div/div/div[2]/div[1]/form/div[2]/div/div/div/input")
+                                     "/html/body/div[4]/div/div/div/div[2]/div[2]/div/div[2]/div/div/div[1]/div/form/div[2]/div/div/input")
     btn_login = driver.find_element('xpath',
-                                    "/html/body/div[4]/div/div/div/div[2]/div[2]/div/div/div[2]/div/div/div[2]/div[1]/form/div[4]/button")
+                                    "/html/body/div[4]/div/div/div/div[2]/div[2]/div/div[2]/div/div/div[1]/div/form/div[3]/button")
 
     input_email.send_keys(login)
     input_pass.send_keys(password)

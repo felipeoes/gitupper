@@ -318,3 +318,7 @@ modules.xml
 #azure
 .azure
 .azure/
+
+# Project-related
+postgres-data/
+debug.ipynb

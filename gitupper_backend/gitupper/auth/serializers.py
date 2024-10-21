@@ -7,6 +7,7 @@ from django.utils.translation import gettext_lazy as _
 
 from gitupper.user.serializers import UsersSerializer
 from gitupper.github.serializers import GithubUsersSerializer
+from gitupper.github.models import GithubUser
 from gitupper.user.utils import check_user_binded
 from gitupper.platforms.serializers import (
     BeeUsersSerializer,
@@ -41,7 +42,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             "profile_image",
         ]
         extra_kwargs = {"password": {"write_only": True}}
-
+        
     def save(self, request, *args, **kwargs):
         try:
             profile_image = request.data.get("profile_image")
