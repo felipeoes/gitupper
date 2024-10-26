@@ -117,6 +117,8 @@ export async function LoginGithub(code, gitupperUser) {
     const { registered, authTokens } = await checkRegistered(userData, gitupperUser);
     console.log("Registered: ", registered, "AuthTokens: ", authTokens);
 
+   
+
     if (!registered) {
       let updatedUser = await RegisterGithubUser(userData);
 
@@ -171,6 +173,7 @@ async function RegisterGithubUser(userData) {
 
     console.log("responseUser", responseUser);
     userData.user = responseUser;
+    userData.tokens = response.data.tokens;
 
     localStorage.setItem(API_AUTH_TOKEN_NAME, JSON.stringify(response.data));
   } else {
